@@ -448,6 +448,7 @@ impl WebGl2Backend {
                     // if the overall style is underlined, remove it, otherwise add it
                     c.style(c.get_style() ^ (GlyphEffect::Underline as u16));
                 }
+                CursorShape::None => (),
             }
         }
     }

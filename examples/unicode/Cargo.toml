@@ -1,0 +1,9 @@
+[package]
+name = "unicode"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ratzilla.workspace = true
+examples-shared.workspace = true

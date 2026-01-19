@@ -69,6 +69,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
       - name: cargo generate-lockfile
         if: hashFiles('Cargo.lock') == ''
         run: cargo generate-lockfile
@@ -78,6 +82,8 @@ jobs:
         run: cargo test --doc --all-features
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
+      - name: Run browser headless tests
+        run: wasm-pack test --firefox --headless
 
   generate-template:
     runs-on: ubuntu-latest

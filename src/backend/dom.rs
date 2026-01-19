@@ -15,7 +15,9 @@ use web_sys::{
     window, Document, Element, Window,
 };
 
-use crate::{backend::utils::*, error::Error, widgets::hyperlink::HYPERLINK_MODIFIER, CursorShape};
+use unicode_width::UnicodeWidthStr;
+
+use crate::{backend::utils::*, error::Error, CursorShape};
 
 /// Options for the [`DomBackend`].
 #[derive(Debug, Default)]
@@ -63,10 +65,6 @@ impl DomBackendOptions {
 pub struct DomBackend {
     /// Whether the backend has been initialized.
     initialized: Rc<RefCell<bool>>,
-    /// Current buffer.
-    buffer: Vec<Vec<Cell>>,
-    /// Previous buffer.
-    prev_buffer: Vec<Vec<Cell>>,
     /// Cells.
     cells: Vec<Element>,
     /// Grid element.
@@ -81,6 +79,10 @@ pub struct DomBackend {
     options: DomBackendOptions,
     /// Cursor position.
     cursor_position: Option<Position>,
+    /// Last Cursor position.
+    last_cursor_position: Option<Position>,
+    /// Buffer size to pass to [`ratatui::Terminal`]
+    size: Size,
 }
 
 impl DomBackend {
@@ -109,8 +111,6 @@ impl DomBackend {
         let document = window.document().ok_or(Error::UnableToRetrieveDocument)?;
         let mut backend = Self {
             initialized: Rc::new(RefCell::new(false)),
-            buffer: vec![],
-            prev_buffer: vec![],
             cells: vec![],
             grid: document.create_element("div")?,
             grid_parent: get_element_by_id_or_body(options.grid_id.as_ref())?,
@@ -118,6 +118,8 @@ impl DomBackend {
             window,
             document,
             cursor_position: None,
+            last_cursor_position: None,
+            size: get_size(),
         };
         backend.add_on_resize_listener();
         backend.reset_grid()?;
@@ -140,46 +142,25 @@ impl DomBackend {
         self.grid = self.document.create_element("div")?;
         self.grid.set_attribute("id", &self.options.grid_id())?;
         self.cells.clear();
-        self.buffer = get_sized_buffer();
-        self.prev_buffer = self.buffer.clone();
         Ok(())
     }
 
-    /// Pre-render the content to the screen.
+    /// Pre-render a blank content to the screen.
     ///
-    /// This function is called from [`flush`] once to render the initial
-    /// content to the screen.
-    fn prerender(&mut self) -> Result<(), Error> {
-        for line in self.buffer.iter() {
+    /// This function is called from [`draw`] once (or after a resize)
+    /// to render the right number of cells to the screen.
+    fn populate(&mut self) -> Result<(), Error> {
+        for _y in 0..self.size.height {
             let mut line_cells: Vec<Element> = Vec::new();
-            let mut hyperlink: Vec<Cell> = Vec::new();
-            for (i, cell) in line.iter().enumerate() {
-                if cell.modifier.contains(HYPERLINK_MODIFIER) {
-                    hyperlink.push(cell.clone());
-                    // If the next cell is not part of the hyperlink, close it
-                    if !line
-                        .get(i + 1)
-                        .map(|c| c.modifier.contains(HYPERLINK_MODIFIER))
-                        .unwrap_or(false)
-                    {
-                        let anchor = create_anchor(&self.document, &hyperlink)?;
-                        for link_cell in &hyperlink {
-                            let span = create_span(&self.document, link_cell)?;
-                            self.cells.push(span.clone());
-                            anchor.append_child(&span)?;
-                        }
-                        line_cells.push(anchor);
-                        hyperlink.clear();
-                    }
-                } else {
-                    let span = create_span(&self.document, cell)?;
-                    self.cells.push(span.clone());
-                    line_cells.push(span);
-                }
+            for _x in 0..self.size.width {
+                let span = create_span(&self.document, &Cell::default())?;
+                self.cells.push(span.clone());
+                line_cells.push(span);
             }
 
             // Create a <pre> element for the line
             let pre = self.document.create_element("pre")?;
+            pre.set_attribute("style", "height: 15px;")?;
 
             // Append all elements (spans and anchors) to the <pre>
             for elem in line_cells {
@@ -191,35 +172,26 @@ impl DomBackend {
         }
         Ok(())
     }
-
-    /// Compare the current buffer to the previous buffer and updates the grid
-    /// accordingly.
-    fn update_grid(&mut self) -> Result<(), Error> {
-        for (y, line) in self.buffer.iter().enumerate() {
-            for (x, cell) in line.iter().enumerate() {
-                if cell.modifier.contains(HYPERLINK_MODIFIER) {
-                    continue;
-                }
-                if cell != &self.prev_buffer[y][x] {
-                    let elem = self.cells[y * self.buffer[0].len() + x].clone();
-                    elem.set_inner_html(cell.symbol());
-                    elem.set_attribute("style", &get_cell_style_as_css(cell))?;
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Backend for DomBackend {
     type Error = IoError;
 
-    // Populates the buffer with the given content.
+    /// Draw the new content to the screen.
+    ///
+    /// This function is called in the [`ratatui::Terminal::flush`] function.
+    /// This function recreate the DOM structure when it gets a resize event.
     fn draw<'a, I>(&mut self, content: I) -> IoResult<()>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
         if !*self.initialized.borrow() {
+            self.initialized.replace(true);
+
+            // Clear cursor position to avoid modifying css style of a non-existent cell
+            self.cursor_position = None;
+            self.last_cursor_position = None;
+
             // Only runs on resize event.
             if self
                 .document
@@ -228,75 +200,85 @@ impl Backend for DomBackend {
             {
                 self.grid_parent.set_inner_html("");
                 self.reset_grid()?;
+
+                // update size
+                self.size = get_size();
             }
+
+            self.grid_parent
+                .append_child(&self.grid)
+                .map_err(Error::from)?;
+            self.populate()?;
         }
 
-        // Update the cells with new content
         for (x, y, cell) in content {
-            let y = y as usize;
-            let x = x as usize;
-            if y < self.buffer.len() {
-                let line = &mut self.buffer[y];
-                line.extend(
-                    std::iter::repeat_with(Cell::default).take(x.saturating_sub(line.len())),
-                );
-                if x < line.len() {
-                    line[x] = cell.clone();
-                }
-            }
-        }
+            let cell_position = (y * self.size.width + x) as usize;
+            let elem = &self.cells[cell_position];
 
-        // Draw the cursor if set
-        if let Some(pos) = self.cursor_position {
-            let y = pos.y as usize;
-            let x = pos.x as usize;
-            let line = &mut self.buffer[y];
-            if x < line.len() {
-                let cursor_style = self.options.cursor_shape().show(line[x].style());
-                line[x].set_style(cursor_style);
+            elem.set_inner_html(cell.symbol());
+            elem.set_attribute("style", &get_cell_style_as_css(cell))
+                .map_err(Error::from)?;
+
+            // don't display the next cell if a fullwidth glyph preceeds it
+            if cell.symbol().len() > 1 && cell.symbol().width() == 2 {
+                if (cell_position + 1) < self.cells.len() {
+                    let next_elem = &self.cells[cell_position + 1];
+                    next_elem.set_inner_html("");
+                    next_elem
+                        .set_attribute("style", &get_cell_style_as_css(&Cell::new("")))
+                        .map_err(Error::from)?;
+                }
             }
         }
 
         Ok(())
     }
 
-    /// Flush the content to the screen.
+    /// This function is called after the [`DomBackend::draw`] function.
     ///
-    /// This function is called after the [`DomBackend::draw`] function to
-    /// actually render the content to the screen.
+    /// This function does nothing because the content is directly
+    /// displayed by the draw function.
     fn flush(&mut self) -> IoResult<()> {
-        if !*self.initialized.borrow() {
-            self.initialized.replace(true);
-            self.grid_parent
-                .append_child(&self.grid)
-                .map_err(Error::from)?;
-            self.prerender()?;
-            // Set the previous buffer to the current buffer for the first render
-            self.prev_buffer = self.buffer.clone();
-        }
-        // Check if the buffer has changed since the last render and update the grid
-        if self.buffer != self.prev_buffer {
-            self.update_grid()?;
-        }
-        self.prev_buffer = self.buffer.clone();
         Ok(())
     }
 
     fn hide_cursor(&mut self) -> IoResult<()> {
         if let Some(pos) = self.cursor_position {
-            let y = pos.y as usize;
-            let x = pos.x as usize;
-            let line = &mut self.buffer[y];
-            if x < line.len() {
-                let style = self.options.cursor_shape.hide(line[x].style());
-                line[x].set_style(style);
-            }
+            let cell_position = (pos.y * self.size.width + pos.x) as usize;
+
+            // Use CursorShape::None to clear cursor CSS
+            update_css_field(
+                CursorShape::None.get_css_attribute(),
+                &self.cells[cell_position],
+            )
+            .map_err(Error::from)?;
         }
-        self.cursor_position = None;
+
         Ok(())
     }
 
     fn show_cursor(&mut self) -> IoResult<()> {
+        // Remove cursor at last position
+        if let Some(pos) = self.last_cursor_position {
+            let cell_position = (pos.y * self.size.width + pos.x) as usize;
+            update_css_field(
+                CursorShape::None.get_css_attribute(),
+                &self.cells[cell_position],
+            )
+            .map_err(Error::from)?;
+        }
+
+        // Show cursor at current position
+        if let Some(pos) = self.cursor_position {
+            let cell_position = (pos.y * self.size.width + pos.x) as usize;
+
+            update_css_field(
+                self.options.cursor_shape.get_css_attribute(),
+                &self.cells[cell_position],
+            )
+            .map_err(Error::from)?;
+        }
+
         Ok(())
     }
 
@@ -309,14 +291,13 @@ impl Backend for DomBackend {
     }
 
     fn clear(&mut self) -> IoResult<()> {
-        self.buffer = get_sized_buffer();
         Ok(())
     }
 
     fn size(&self) -> IoResult<Size> {
         Ok(Size::new(
-            self.buffer[0].len().saturating_sub(1) as u16,
-            self.buffer.len().saturating_sub(1) as u16,
+            self.size.width.saturating_sub(1),
+            self.size.height.saturating_sub(1),
         ))
     }
 
@@ -331,18 +312,11 @@ impl Backend for DomBackend {
         }
     }
 
+    /// Update cursor_position and last_cursor_position
     fn set_cursor_position<P: Into<Position>>(&mut self, position: P) -> IoResult<()> {
-        let new_pos = position.into();
-        if let Some(old_pos) = self.cursor_position {
-            let y = old_pos.y as usize;
-            let x = old_pos.x as usize;
-            let line = &mut self.buffer[y];
-            if x < line.len() && old_pos != new_pos {
-                let style = self.options.cursor_shape.hide(line[x].style());
-                line[x].set_style(style);
-            }
-        }
-        self.cursor_position = Some(new_pos);
+        self.last_cursor_position = self.cursor_position;
+        self.cursor_position = Some(position.into());
+
         Ok(())
     }
 

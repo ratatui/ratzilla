@@ -43,3 +43,7 @@ console_error_panic_hook = "0.1.7"
 thiserror = "2.0.12"
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "std"] }
 beamterm-renderer = "0.10.0"
+unicode-width = "0.2.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.56"

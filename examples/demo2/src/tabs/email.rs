@@ -46,6 +46,11 @@ const EMAILS: &[Email] = &[
         subject: "Re: Hello (STOP REPLYING TO ALL)",
         body: "Hi Everyone,\nI'm reading all your emails.\n\nEve",
     },
+    Email {
+        from: "Frank <taro@example.com>",
+        subject: "こんにちは (Japanese)",
+        body: "こんにちは Eve,\nげんきですか？\n\nFrank",
+    },
 ];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

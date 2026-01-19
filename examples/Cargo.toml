@@ -14,6 +14,7 @@ members = [
     "tauri",
     "text_area",
     "user_input",
+    "unicode",
     "website",
     "world_map",
 ]
