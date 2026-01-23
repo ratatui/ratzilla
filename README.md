@@ -215,16 +215,16 @@ There is a Vercel deployment template available for Ratzilla [here](https://verc
 
 ## Examples
 
-- [Minimal](https://github.com/ratatui/ratzilla/tree/main/examples/minimal) ([Preview](https://orhun.dev/ratzilla/minimal))
-- [Demo](https://github.com/ratatui/ratzilla/tree/main/examples/demo) ([Preview](https://orhun.dev/ratzilla/demo))
-- [Pong](https://github.com/ratatui/ratzilla/tree/main/examples/pong) ([Preview](https://orhun.dev/ratzilla/pong))
-- [Colors RGB](https://github.com/ratatui/ratzilla/tree/main/examples/colors_rgb) ([Preview](https://orhun.dev/ratzilla/colors_rgb))
-- [Animations](https://github.com/ratatui/ratzilla/tree/main/examples/animations) ([Preview](https://orhun.dev/ratzilla/animations))
-- [World Map](https://github.com/ratatui/ratzilla/tree/main/examples/world_map) ([Preview](https://orhun.dev/ratzilla/world_map))
+- [Minimal](https://github.com/ratatui/ratzilla/tree/main/examples/minimal) ([Preview](https://ratatui.github.io/ratzilla/minimal))
+- [Demo](https://github.com/ratatui/ratzilla/tree/main/examples/demo) ([Preview](https://ratatui.github.io/ratzilla/demo))
+- [Pong](https://github.com/ratatui/ratzilla/tree/main/examples/pong) ([Preview](https://ratatui.github.io/ratzilla/pong))
+- [Colors RGB](https://github.com/ratatui/ratzilla/tree/main/examples/colors_rgb) ([Preview](https://ratatui.github.io/ratzilla/colors_rgb))
+- [Animations](https://github.com/ratatui/ratzilla/tree/main/examples/animations) ([Preview](https://ratatui.github.io/ratzilla/animations))
+- [World Map](https://github.com/ratatui/ratzilla/tree/main/examples/world_map) ([Preview](https://ratatui.github.io/ratzilla/world_map))
 
 ## Websites built with Ratzilla
 
-- <https://orhun.dev/ratzilla> - The official website of Ratzilla
+- <https://ratatui.github.io/ratzilla> - The official website of Ratzilla
 - <https://terminalcollective.org> - Terminal Collective community website
 - <https://www.function-type.com/tusistor> - Resistor calculator
 - <http://timbeck.me> - Personal website of Tim Beck

@@ -32,12 +32,12 @@ for example in examples/*; do
   pushd "$example" || exit
   
   if [ "$example_name" == "website" ]; then
-    trunk build --release --public-url https://orhun.dev/ratzilla/
+    trunk build --release --public-url https://ratatui.github.io/ratzilla/
     cp -r dist/* ../../dist/
   elif [[ "$example_name" == "tauri"* ]]; then
     echo "Skipping Tauri example"
   else
-    trunk build --release --public-url https://orhun.dev/ratzilla/"$example_name"
+    trunk build --release --public-url https://ratatui.github.io/ratzilla/"$example_name"
     cp -r dist/* ../../dist/"$example_name"
   fi
   popd || exit

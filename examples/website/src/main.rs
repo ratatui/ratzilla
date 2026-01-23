@@ -84,7 +84,7 @@ fn handle_key_event(key: KeyEvent) {
             open_url("https://github.com/ratatui/ratzilla", true).unwrap();
         }
         KeyCode::Char('d') => {
-            open_url("https://orhun.dev/ratzilla/demo", false).unwrap();
+            open_url("https://ratatui.github.io/ratzilla/demo", false).unwrap();
         }
         _ => {}
     }
