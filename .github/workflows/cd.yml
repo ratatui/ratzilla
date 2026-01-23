@@ -1,20 +1,54 @@
-name: Release
+name: Release-plz
+
+permissions:
+  pull-requests: write
+  contents: write
+  id-token: write
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
 
 jobs:
-  publish-crates-io:
-    name: Publish on crates.io
+  # Release unpublished packages.
+  release-plz-release:
+    name: Release-plz release
     runs-on: ubuntu-latest
+    environment: release
+    if: ${{ github.repository_owner == 'ratatui' }}
     steps:
-      - name: Checkout the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install Rust stable
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish
-        run: cargo publish --locked --token ${{ secrets.CARGO_TOKEN }}
+  # Create a PR with the new versions and changelog, preparing the next release.
+  release-plz-pr:
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'ratatui' }}
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
