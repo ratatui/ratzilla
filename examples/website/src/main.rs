@@ -81,7 +81,7 @@ fn ui(f: &mut Frame<'_>, state: &mut State) {
 fn handle_key_event(key: KeyEvent) {
     match key.code {
         KeyCode::Char('g') => {
-            open_url("https://github.com/orhun/ratzilla", true).unwrap();
+            open_url("https://github.com/ratatui/ratzilla", true).unwrap();
         }
         KeyCode::Char('d') => {
             open_url("https://orhun.dev/ratzilla/demo", false).unwrap();
@@ -98,7 +98,7 @@ fn render_intro(f: &mut Frame<'_>, state: &mut State) {
         Line::from("Stomping through the web").italic(),
     ]);
     f.render_widget(main_text.light_green().centered(), area);
-    let link = Hyperlink::new("https://github.com/orhun/ratzilla".red());
+    let link = Hyperlink::new("https://github.com/ratatui/ratzilla".red());
     f.render_widget(link, area.offset(Offset { x: 0, y: 4 }));
     f.render_effect(&mut state.intro_effect, area, Duration::from_millis(40));
 }

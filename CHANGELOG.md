@@ -10,34 +10,34 @@ This release comes with support for mouse events, improved WebGL2 backend integr
 
 ### 🚀 Features
 
-- _(backend)_ Update WebGl2Backend integration by @junkdog in [#108](https://github.com/orhun/ratzilla/pull/108)
-- _(examples)_ Add multi-backend support by @junkdog in [#109](https://github.com/orhun/ratzilla/pull/109)
-- _(event)_ Support mouse events by @hecksadecimal in [#107](https://github.com/orhun/ratzilla/pull/107)
+- _(backend)_ Update WebGl2Backend integration by @junkdog in [#108](https://github.com/ratatui/ratzilla/pull/108)
+- _(examples)_ Add multi-backend support by @junkdog in [#109](https://github.com/ratatui/ratzilla/pull/109)
+- _(event)_ Support mouse events by @hecksadecimal in [#107](https://github.com/ratatui/ratzilla/pull/107)
 
 ### 🐛 Bug Fixes
 
-- _(webgl2)_ Honor Modifier::REVERSED for Color::Reset by @junkdog in [#127](https://github.com/orhun/ratzilla/pull/127)
-- _(template)_ Remove unused script in index.html by @Wybxc in [#120](https://github.com/orhun/ratzilla/pull/120)
-- _(dom)_ Ensure consistent width for braille characters by @junkdog in [#119](https://github.com/orhun/ratzilla/pull/119)
+- _(webgl2)_ Honor Modifier::REVERSED for Color::Reset by @junkdog in [#127](https://github.com/ratatui/ratzilla/pull/127)
+- _(template)_ Remove unused script in index.html by @Wybxc in [#120](https://github.com/ratatui/ratzilla/pull/120)
+- _(dom)_ Ensure consistent width for braille characters by @junkdog in [#119](https://github.com/ratatui/ratzilla/pull/119)
 - _(dom)_ Ensure consistent width for braille characters by @junkdog
 
 ### 📚 Documentation
 
-- _(readme)_ Add 0x01d's website by @orhun in [#126](https://github.com/orhun/ratzilla/pull/126)
-- _(readme)_ Update acknowledgements by @orhun in [#115](https://github.com/orhun/ratzilla/pull/115)
+- _(readme)_ Add 0x01d's website by @orhun in [#126](https://github.com/ratatui/ratzilla/pull/126)
+- _(readme)_ Update acknowledgements by @orhun in [#115](https://github.com/ratatui/ratzilla/pull/115)
 - _(readme)_ Add exabind to websites by @junkdog
 
 ### ⚙️ Miscellaneous Tasks
 
-- _(deps)_ Update dependencies by @orhun in [#128](https://github.com/orhun/ratzilla/pull/128)
-- _(examples)_ Ignore Cargo.lock files by @junkdog in [#117](https://github.com/orhun/ratzilla/pull/117)
+- _(deps)_ Update dependencies by @orhun in [#128](https://github.com/ratatui/ratzilla/pull/128)
+- _(examples)_ Ignore Cargo.lock files by @junkdog in [#117](https://github.com/ratatui/ratzilla/pull/117)
 
 ## 💖 New Contributors
 
-- @Wybxc made their first contribution in [#120](https://github.com/orhun/ratzilla/pull/120)
-- @hecksadecimal made their first contribution in [#107](https://github.com/orhun/ratzilla/pull/107)
+- @Wybxc made their first contribution in [#120](https://github.com/ratatui/ratzilla/pull/120)
+- @hecksadecimal made their first contribution in [#107](https://github.com/ratatui/ratzilla/pull/107)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.1.0...0.2.0
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.1.0...0.2.0
 
 ## 0.1.0 - 2025-06-13
 
@@ -49,33 +49,33 @@ The WebGL2 backend is powered by [beamterm](https://github.com/junkdog/beamterm)
 
 ### 🚀 Features
 
-- _(backend)_ Add WebGL2 Backend by @junkdog in [#100](https://github.com/orhun/ratzilla/pull/100)
-- _(canvas)_ Minimize number of canvas state change operations by @junkdog in [#93](https://github.com/orhun/ratzilla/pull/93)
-- _(utils)_ Add support for dynamically calling JS functions from Rust by @lurkny in [#86](https://github.com/orhun/ratzilla/pull/86)
-- _(canvas)_ Extend CanvasBackend with options by @junkdog in [#88](https://github.com/orhun/ratzilla/pull/88)
-- _(canvas)_ Support setting the cursor shape by @dawedawe in [#84](https://github.com/orhun/ratzilla/pull/84)
-- _(canvas)_ Add debug mode by @lurkny in [#83](https://github.com/orhun/ratzilla/pull/83)
-- _(examples)_ Add clipboard example by @orhun in [#80](https://github.com/orhun/ratzilla/pull/80)
+- _(backend)_ Add WebGL2 Backend by @junkdog in [#100](https://github.com/ratatui/ratzilla/pull/100)
+- _(canvas)_ Minimize number of canvas state change operations by @junkdog in [#93](https://github.com/ratatui/ratzilla/pull/93)
+- _(utils)_ Add support for dynamically calling JS functions from Rust by @lurkny in [#86](https://github.com/ratatui/ratzilla/pull/86)
+- _(canvas)_ Extend CanvasBackend with options by @junkdog in [#88](https://github.com/ratatui/ratzilla/pull/88)
+- _(canvas)_ Support setting the cursor shape by @dawedawe in [#84](https://github.com/ratatui/ratzilla/pull/84)
+- _(canvas)_ Add debug mode by @lurkny in [#83](https://github.com/ratatui/ratzilla/pull/83)
+- _(examples)_ Add clipboard example by @orhun in [#80](https://github.com/ratatui/ratzilla/pull/80)
 
 ### 📚 Documentation
 
-- _(readme)_ Add personal website of @tarbetu by @Tarbetu in [#101](https://github.com/orhun/ratzilla/pull/101)
-- _(readme)_ Add TachyonFX FTL to web pages by @junkdog in [#85](https://github.com/orhun/ratzilla/pull/85)
+- _(readme)_ Add personal website of @tarbetu by @Tarbetu in [#101](https://github.com/ratatui/ratzilla/pull/101)
+- _(readme)_ Add TachyonFX FTL to web pages by @junkdog in [#85](https://github.com/ratatui/ratzilla/pull/85)
 
 ### ⚡ Performance
 
-- _(canvas)_ Reduce the number of WASM calls by @junkdog in [#89](https://github.com/orhun/ratzilla/pull/89)
+- _(canvas)_ Reduce the number of WASM calls by @junkdog in [#89](https://github.com/ratatui/ratzilla/pull/89)
 
 ### 🎨 Styling
 
-- _(examples)_ Spice up `demo` example's effects by @junkdog in [#94](https://github.com/orhun/ratzilla/pull/94)
+- _(examples)_ Spice up `demo` example's effects by @junkdog in [#94](https://github.com/ratatui/ratzilla/pull/94)
 
 ## 💖 New Contributors
 
-- @Tarbetu made their first contribution in [#101](https://github.com/orhun/ratzilla/pull/101)
-- @lurkny made their first contribution in [#86](https://github.com/orhun/ratzilla/pull/86)
+- @Tarbetu made their first contribution in [#101](https://github.com/ratatui/ratzilla/pull/101)
+- @lurkny made their first contribution in [#86](https://github.com/ratatui/ratzilla/pull/86)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.6...0.1.0
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.6...0.1.0
 
 <!-- generated by git-cliff -->
 
@@ -83,106 +83,106 @@ The WebGL2 backend is powered by [beamterm](https://github.com/junkdog/beamterm)
 
 ### 🚀 Features
 
-- _(dom)_ Add cursor support by @dawedawe in [#77](https://github.com/orhun/ratzilla/pull/77)
-- _(example)_ Add demo2 example by @orhun in [#45](https://github.com/orhun/ratzilla/pull/45)
+- _(dom)_ Add cursor support by @dawedawe in [#77](https://github.com/ratatui/ratzilla/pull/77)
+- _(example)_ Add demo2 example by @orhun in [#45](https://github.com/ratatui/ratzilla/pull/45)
 
 ### 🐛 Bug Fixes
 
-- _(examples)_ Remove failing ratzilla.js imports from examples by @junkdog in [#81](https://github.com/orhun/ratzilla/pull/81)
-- _(canvas)_ Add clipping for each cell to avoid overflow by @orhun in [#76](https://github.com/orhun/ratzilla/pull/76)
-- _(examples)_ Fix some package names in examples by @dawedawe in [#69](https://github.com/orhun/ratzilla/pull/69)
+- _(examples)_ Remove failing ratzilla.js imports from examples by @junkdog in [#81](https://github.com/ratatui/ratzilla/pull/81)
+- _(canvas)_ Add clipping for each cell to avoid overflow by @orhun in [#76](https://github.com/ratatui/ratzilla/pull/76)
+- _(examples)_ Fix some package names in examples by @dawedawe in [#69](https://github.com/ratatui/ratzilla/pull/69)
 
 ### 🚜 Refactor
 
-- _(render)_ Simplify rendering to less depend on ratatui internals by @orhun in [#78](https://github.com/orhun/ratzilla/pull/78)
+- _(render)_ Simplify rendering to less depend on ratatui internals by @orhun in [#78](https://github.com/ratatui/ratzilla/pull/78)
 
 ### 📚 Documentation
 
-- _(readme)_ Add deployment information by @jetpham in [#79](https://github.com/orhun/ratzilla/pull/79)
-- _(examples)_ Add text input example using tui-textarea by @reubeno in [#74](https://github.com/orhun/ratzilla/pull/74)
+- _(readme)_ Add deployment information by @jetpham in [#79](https://github.com/ratatui/ratzilla/pull/79)
+- _(examples)_ Add text input example using tui-textarea by @reubeno in [#74](https://github.com/ratatui/ratzilla/pull/74)
 
 ### ⚙️ Miscellaneous Tasks
 
 - _(example)_ Remove unnecessary import from user_input example by @orhun
-- _(lib)_ Re-export web-sys crate by @orhun in [#71](https://github.com/orhun/ratzilla/pull/71)
+- _(lib)_ Re-export web-sys crate by @orhun in [#71](https://github.com/ratatui/ratzilla/pull/71)
 - _(example)_ Disable big-text in demo temporarily by @orhun
 
 ## 💖 New Contributors
 
-- @jetpham made their first contribution in [#79](https://github.com/orhun/ratzilla/pull/79)
-- @reubeno made their first contribution in [#74](https://github.com/orhun/ratzilla/pull/74)
+- @jetpham made their first contribution in [#79](https://github.com/ratatui/ratzilla/pull/79)
+- @reubeno made their first contribution in [#74](https://github.com/ratatui/ratzilla/pull/74)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.5...0.0.6
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.5...0.0.6
 
 ## 0.0.5 - 2025-04-01
 
 ### 🐛 Bug Fixes
 
-- _(utils)_ Improve the mobile detection by @dawedawe in [#65](https://github.com/orhun/ratzilla/pull/65)
+- _(utils)_ Improve the mobile detection by @dawedawe in [#65](https://github.com/ratatui/ratzilla/pull/65)
 - _(pages)_ Don't deploy website on pull requests by @orhun
 
 ### 📚 Documentation
 
-- _(readme)_ Add jetpham website by @orhun in [#66](https://github.com/orhun/ratzilla/pull/66)
-- _(readme)_ Remove glitches between shields by @j-g00da in [#64](https://github.com/orhun/ratzilla/pull/64)
+- _(readme)_ Add jetpham website by @orhun in [#66](https://github.com/ratatui/ratzilla/pull/66)
+- _(readme)_ Remove glitches between shields by @j-g00da in [#64](https://github.com/ratatui/ratzilla/pull/64)
 
 ### ⚙️ Miscellaneous Tasks
 
-- _(deps)_ Bump tachyonfx to 0.13.0 by @orhun in [#67](https://github.com/orhun/ratzilla/pull/67)
+- _(deps)_ Bump tachyonfx to 0.13.0 by @orhun in [#67](https://github.com/ratatui/ratzilla/pull/67)
 
 ## 💖 New Contributors
 
-- @j-g00da made their first contribution in [#64](https://github.com/orhun/ratzilla/pull/64)
+- @j-g00da made their first contribution in [#64](https://github.com/ratatui/ratzilla/pull/64)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.4...0.0.5
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.4...0.0.5
 
 ## 0.0.4 - 2025-03-19
 
 ### 🚀 Features
 
-- _(template)_ Add simple app template by @orhun in [#62](https://github.com/orhun/ratzilla/pull/62)
+- _(template)_ Add simple app template by @orhun in [#62](https://github.com/ratatui/ratzilla/pull/62)
 
 ### 📚 Documentation
 
 - _(readme)_ Use the full path for the demo image by @orhun
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.3...0.0.4
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.3...0.0.4
 
 ## 0.0.3 - 2025-03-03
 
 ### 📚 Documentation
 
-- _(readme)_ Add tusistor website by @dawedawe in [#55](https://github.com/orhun/ratzilla/pull/55)
-- _(readme)_ Add link to FOSDEM 2025 talk by @orhun in [#57](https://github.com/orhun/ratzilla/pull/57)
+- _(readme)_ Add tusistor website by @dawedawe in [#55](https://github.com/ratatui/ratzilla/pull/55)
+- _(readme)_ Add link to FOSDEM 2025 talk by @orhun in [#57](https://github.com/ratatui/ratzilla/pull/57)
 
 ### ⚙️ Miscellaneous Tasks
 
 - _(deps)_ Bump dependencies
-- _(deps)_ Use stable version of tachyonfx (0.11.1) by @junkdog in [#56](https://github.com/orhun/ratzilla/pull/56)
+- _(deps)_ Use stable version of tachyonfx (0.11.1) by @junkdog in [#56](https://github.com/ratatui/ratzilla/pull/56)
 
 ## 💖 New Contributors
 
-- @dawedawe made their first contribution in [#55](https://github.com/orhun/ratzilla/pull/55)
-- @junkdog made their first contribution in [#56](https://github.com/orhun/ratzilla/pull/56)
-- @orhun made their first contribution in [#57](https://github.com/orhun/ratzilla/pull/57)
+- @dawedawe made their first contribution in [#55](https://github.com/ratatui/ratzilla/pull/55)
+- @junkdog made their first contribution in [#56](https://github.com/ratatui/ratzilla/pull/56)
+- @orhun made their first contribution in [#57](https://github.com/ratatui/ratzilla/pull/57)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.2...0.0.3
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.2...0.0.3
 
 ## 0.0.2 - 2025-02-13
 
 ### 🚀 Features
 
-- _(backend)_ Add a DomBackend::new_by_id() by @jugglerchris in [#47](https://github.com/orhun/ratzilla/pull/47)
-- _(deps)_ Enable all-widgets of ratatui by @orhun in [#49](https://github.com/orhun/ratzilla/pull/49)
+- _(backend)_ Add a DomBackend::new_by_id() by @jugglerchris in [#47](https://github.com/ratatui/ratzilla/pull/47)
+- _(deps)_ Enable all-widgets of ratatui by @orhun in [#49](https://github.com/ratatui/ratzilla/pull/49)
 
 ### 🚜 Refactor
 
-- _(examples)_ Refactor the tauri example by @orhun in [#52](https://github.com/orhun/ratzilla/pull/52)
+- _(examples)_ Refactor the tauri example by @orhun in [#52](https://github.com/ratatui/ratzilla/pull/52)
 
 ### 📚 Documentation
 
-- _(readme)_ Add instruction to install WASM compilation target by @pemattern in [#48](https://github.com/orhun/ratzilla/pull/48)
-- _(readme)_ Add Tim Beck's website by @orhun in [#44](https://github.com/orhun/ratzilla/pull/44)
+- _(readme)_ Add instruction to install WASM compilation target by @pemattern in [#48](https://github.com/ratatui/ratzilla/pull/48)
+- _(readme)_ Add Tim Beck's website by @orhun in [#44](https://github.com/ratatui/ratzilla/pull/44)
 
 ### 🎨 Styling
 
@@ -190,15 +190,15 @@ The WebGL2 backend is powered by [beamterm](https://github.com/junkdog/beamterm)
 
 ### ⚙️ Miscellaneous Tasks
 
-- _(examples)_ Add tauri example by @denjell-crabnebula in [#51](https://github.com/orhun/ratzilla/pull/51)
+- _(examples)_ Add tauri example by @denjell-crabnebula in [#51](https://github.com/ratatui/ratzilla/pull/51)
 
 ## 💖 New Contributors
 
-- @denjell-crabnebula made their first contribution in [#51](https://github.com/orhun/ratzilla/pull/51)
-- @pemattern made their first contribution in [#48](https://github.com/orhun/ratzilla/pull/48)
-- @jugglerchris made their first contribution in [#47](https://github.com/orhun/ratzilla/pull/47)
+- @denjell-crabnebula made their first contribution in [#51](https://github.com/ratatui/ratzilla/pull/51)
+- @pemattern made their first contribution in [#48](https://github.com/ratatui/ratzilla/pull/48)
+- @jugglerchris made their first contribution in [#47](https://github.com/ratatui/ratzilla/pull/47)
 
-**Full Changelog**: https://github.com/orhun/ratzilla/compare/v0.0.1...0.0.2
+**Full Changelog**: https://github.com/ratatui/ratzilla/compare/v0.0.1...0.0.2
 
 <!-- generated by git-cliff -->
 

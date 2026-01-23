@@ -1,11 +1,11 @@
 <p align="center">
 <!-- Thanks to https://github.com/dekirisu for the logo -->
-<a href="https://github.com/orhun/ratzilla"><img src="https://raw.githubusercontent.com/orhun/ratzilla/refs/heads/main/assets/ratzilla.gif" width="500"></a>
+<a href="https://github.com/ratatui/ratzilla"><img src="https://raw.githubusercontent.com/ratatui/ratzilla/refs/heads/main/assets/ratzilla.gif" width="500"></a>
 </p>
 
 <div align="center">
 
-[![Repo](https://img.shields.io/badge/github-orhun/ratzilla-3c8cba?style=flat&logo=GitHub&labelColor=1D272B&color=3c8cba&logoColor=white)](https://github.com/orhun/ratzilla)
+[![Repo](https://img.shields.io/badge/github-ratatui/ratzilla-3c8cba?style=flat&logo=GitHub&labelColor=1D272B&color=3c8cba&logoColor=white)](https://github.com/ratatui/ratzilla)
 [![Crate](https://img.shields.io/crates/v/ratzilla?style=flat&logo=Rust&labelColor=1D272B&color=936c94&logoColor=white)](https://crates.io/crates/ratzilla)
 [![Docs](https://img.shields.io/docsrs/ratzilla?style=flat&logo=Rust&labelColor=1D272B&logoColor=white)](https://docs.rs/ratzilla)
 
@@ -30,7 +30,7 @@ cargo install cargo-generate
 Generate a new project:
 
 ```shell
-cargo generate orhun/ratzilla
+cargo generate ratatui/ratzilla
 ```
 
 And then [serve the application on your browser](#serve) ➡️
@@ -215,12 +215,12 @@ There is a Vercel deployment template available for Ratzilla [here](https://verc
 
 ## Examples
 
-- [Minimal](https://github.com/orhun/ratzilla/tree/main/examples/minimal) ([Preview](https://orhun.dev/ratzilla/minimal))
-- [Demo](https://github.com/orhun/ratzilla/tree/main/examples/demo) ([Preview](https://orhun.dev/ratzilla/demo))
-- [Pong](https://github.com/orhun/ratzilla/tree/main/examples/pong) ([Preview](https://orhun.dev/ratzilla/pong))
-- [Colors RGB](https://github.com/orhun/ratzilla/tree/main/examples/colors_rgb) ([Preview](https://orhun.dev/ratzilla/colors_rgb))
-- [Animations](https://github.com/orhun/ratzilla/tree/main/examples/animations) ([Preview](https://orhun.dev/ratzilla/animations))
-- [World Map](https://github.com/orhun/ratzilla/tree/main/examples/world_map) ([Preview](https://orhun.dev/ratzilla/world_map))
+- [Minimal](https://github.com/ratatui/ratzilla/tree/main/examples/minimal) ([Preview](https://orhun.dev/ratzilla/minimal))
+- [Demo](https://github.com/ratatui/ratzilla/tree/main/examples/demo) ([Preview](https://orhun.dev/ratzilla/demo))
+- [Pong](https://github.com/ratatui/ratzilla/tree/main/examples/pong) ([Preview](https://orhun.dev/ratzilla/pong))
+- [Colors RGB](https://github.com/ratatui/ratzilla/tree/main/examples/colors_rgb) ([Preview](https://orhun.dev/ratzilla/colors_rgb))
+- [Animations](https://github.com/ratatui/ratzilla/tree/main/examples/animations) ([Preview](https://orhun.dev/ratzilla/animations))
+- [World Map](https://github.com/ratatui/ratzilla/tree/main/examples/world_map) ([Preview](https://orhun.dev/ratzilla/world_map))
 
 ## Websites built with Ratzilla
 
@@ -262,7 +262,7 @@ Lastly, thanks to [Ratatui] for providing the core UI components.
 
 Pull requests are welcome!
 
-Consider submitting your ideas via [issues](https://github.com/orhun/ratzilla/issues/new) first and check out the [existing issues](https://github.com/orhun/ratzilla/issues).
+Consider submitting your ideas via [issues](https://github.com/ratatui/ratzilla/issues/new) first and check out the [existing issues](https://github.com/ratatui/ratzilla/issues).
 
 ## License
 
