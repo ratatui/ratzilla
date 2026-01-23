@@ -1,7 +1,7 @@
 # configuration for https://github.com/orhun/git-cliff
 
 [remote.github]
-owner = "orhun"
+owner = "ratatui"
 repo = "ratzilla"
 
 [changelog]
@@ -55,12 +55,12 @@ body = """
 {% endif %}
 
 {%- macro remote_url() -%}
-{%- if remote.owner -%} {# release-plz specific variable #}
-https://github.com/{{ remote.owner }}/{{ remote.repo }}\
+{%- if remote.owner -%}
+https://github.com/{{ remote.owner }}/{{ remote.repo }}
 {%- else -%}
-https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}\
+https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- endif -%}
-{% endmacro %}
+{%- endmacro -%}
 """
 # template for the changelog footer
 footer = """
