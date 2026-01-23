@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1](https://github.com/ratatui/ratzilla/compare/v0.2.0...v0.2.1) - 2026-01-23
+
+### Added
+
+- allow setting mouse `SelectionMode` on webgl2 backend ([#143](https://github.com/ratatui/ratzilla/pull/143))
+
+### Other
+
+- *(project)* update the repository link
+- *(dom)* removes double buffering from `DomBackend` ([#138](https://github.com/ratatui/ratzilla/pull/138))
+- *(readme)* add sdr db website to readme ([#147](https://github.com/ratatui/ratzilla/pull/147))
+- update to ratatui 0.30.0 ([#141](https://github.com/ratatui/ratzilla/pull/141))
+- *(deps)* bump beamterm to 0.10.0 ([#140](https://github.com/ratatui/ratzilla/pull/140))
+- *(deps)* bump beamterm to 0.9.0 ([#139](https://github.com/ratatui/ratzilla/pull/139))
+- *(readme)* add website for AlertAngel ([#136](https://github.com/ratatui/ratzilla/pull/136))
+- *(readme)* remove Jet Pham's Conway's Game of Life link ([#131](https://github.com/ratatui/ratzilla/pull/131))
+- *(deps)* bump beamterm to 0.8.0 from 0.7.0 ([#130](https://github.com/ratatui/ratzilla/pull/130))
+- *(readme)* add glues website ([#129](https://github.com/ratatui/ratzilla/pull/129))
+
 ## 0.2.0 - 2025-09-28
 
 We are excited to announce the 0.2.0 release of Ratzilla! 🎉
