@@ -2,32 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.2.1 - 2026-01-23
+## 0.3.0 - 2026-01-23
+
+Ratzilla is a part of the [@ratatui](https://github.com/ratatui) organization now! 🐭
 
 ### 🚀 Features
 
-- Allow setting mouse `SelectionMode` on webgl2 backend  by @0xferrous in [#143](https://github.com/ratatui/ratzilla/pull/143)
+- Allow setting mouse `SelectionMode` on webgl2 backend by @0xferrous in [#143](https://github.com/ratatui/ratzilla/pull/143)
 
 ### 🚜 Refactor
 
-- *(dom)* Removes double buffering from `DomBackend`  by @benoitlx in [#138](https://github.com/ratatui/ratzilla/pull/138)
+- _(dom)_ Removes double buffering from `DomBackend` by @benoitlx in [#138](https://github.com/ratatui/ratzilla/pull/138)
 
 ### 📚 Documentation
 
-- *(readme)* Add sdr db website to readme  by @nuts-rice in [#147](https://github.com/ratatui/ratzilla/pull/147)
-- *(readme)* Add website for AlertAngel  by @Vaishnav-Sabari-Girish in [#136](https://github.com/ratatui/ratzilla/pull/136)
-- *(readme)* Remove Jet Pham's Conway's Game of Life link  by @jetpham in [#131](https://github.com/ratatui/ratzilla/pull/131)
-- *(readme)* Add glues website  by @panarch in [#129](https://github.com/ratatui/ratzilla/pull/129)
+- _(readme)_ Add sdr db website to readme by @nuts-rice in [#147](https://github.com/ratatui/ratzilla/pull/147)
+- _(readme)_ Add website for AlertAngel by @Vaishnav-Sabari-Girish in [#136](https://github.com/ratatui/ratzilla/pull/136)
+- _(readme)_ Remove Jet Pham's Conway's Game of Life link by @jetpham in [#131](https://github.com/ratatui/ratzilla/pull/131)
+- _(readme)_ Add glues website by @panarch in [#129](https://github.com/ratatui/ratzilla/pull/129)
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(website)* Update the GitHub pages deploy URL  by @orhun in [#151](https://github.com/ratatui/ratzilla/pull/151)
-- *(project)* Update the repository link by @orhun in [#148](https://github.com/ratatui/ratzilla/pull/148)
-- Update to ratatui 0.30.0  by @0xferrous in [#141](https://github.com/ratatui/ratzilla/pull/141)
-- *(deps)* Bump beamterm to 0.10.0  by @junkdog in [#140](https://github.com/ratatui/ratzilla/pull/140)
-- *(deps)* Bump beamterm to 0.9.0  by @junkdog in [#139](https://github.com/ratatui/ratzilla/pull/139)
-- *(deps)* Bump beamterm to 0.8.0 from 0.7.0  by @junkdog in [#130](https://github.com/ratatui/ratzilla/pull/130)
-
+- _(website)_ Update the GitHub pages deploy URL by @orhun in [#151](https://github.com/ratatui/ratzilla/pull/151)
+- _(project)_ Update the repository link by @orhun in [#148](https://github.com/ratatui/ratzilla/pull/148)
+- Update to ratatui 0.30.0 by @0xferrous in [#141](https://github.com/ratatui/ratzilla/pull/141)
+- _(deps)_ Bump beamterm to 0.10.0 by @junkdog in [#140](https://github.com/ratatui/ratzilla/pull/140)
+- _(deps)_ Bump beamterm to 0.9.0 by @junkdog in [#139](https://github.com/ratatui/ratzilla/pull/139)
+- _(deps)_ Bump beamterm to 0.8.0 from 0.7.0 by @junkdog in [#130](https://github.com/ratatui/ratzilla/pull/130)
 
 **Full Changelog**: https://github.com/ratatui/ratzilla/compare/0.2.0...0.2.1
 

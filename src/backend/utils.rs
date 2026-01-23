@@ -31,6 +31,7 @@ pub(crate) fn create_span(document: &Document, cell: &Cell) -> Result<Element, E
 }
 
 /// Creates a new `<a>` element with the given cells.
+#[allow(dead_code)]
 pub(crate) fn create_anchor(document: &Document, cells: &[Cell]) -> Result<Element, Error> {
     let anchor = document.create_element("a")?;
     anchor.set_attribute(
