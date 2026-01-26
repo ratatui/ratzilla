@@ -42,7 +42,7 @@ ratatui = { version = "0.30", default-features = false, features = ["all-widgets
 console_error_panic_hook = "0.1.7"
 thiserror = "2.0.18"
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "std"] }
-beamterm-renderer = "0.10.0"
+beamterm-renderer = "0.13.0"
 unicode-width = "0.2.2"
 
 [dev-dependencies]

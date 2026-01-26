@@ -29,6 +29,6 @@ pub use backend::{
     canvas::CanvasBackend,
     cursor::CursorShape,
     dom::DomBackend,
-    webgl2::{SelectionMode, WebGl2Backend},
+    webgl2::{FontAtlasConfig, SelectionMode, WebGl2Backend},
 };
 pub use render::WebRenderer;
