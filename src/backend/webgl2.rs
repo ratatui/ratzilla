@@ -77,8 +77,8 @@ pub struct WebGl2BackendOptions {
     measure_performance: bool,
     /// Enable console debugging and introspection API.
     console_debug_api: bool,
-    /// Use responsive resize mode (CSS controls canvas display size).
-    responsive_resize: bool,
+    /// Disable automatic canvas CSS sizing (let external CSS control dimensions).
+    disable_auto_css_resize: bool,
 }
 
 impl WebGl2BackendOptions {
@@ -222,16 +222,17 @@ impl WebGl2BackendOptions {
         self
     }
 
-    /// Enables responsive resize mode for CSS-controlled layouts.
+    /// Disables automatic canvas CSS sizing for CSS-controlled layouts.
     ///
-    /// When enabled, the backend clears inline CSS dimensions after resize operations,
-    /// allowing external CSS rules (e.g., `width: 100%`) to control the canvas display
-    /// size. The canvas buffer is still sized correctly for crisp HiDPI rendering.
+    /// When called, the renderer does not set inline CSS `width` and `height`
+    /// properties on the canvas, allowing external CSS rules (flexbox, grid,
+    /// percentages) to control the canvas display size. The canvas buffer is
+    /// still sized correctly for crisp HiDPI rendering.
     ///
-    /// Use this when the canvas should automatically fill its container based on
-    /// CSS layout rules rather than having a fixed pixel size.
-    pub fn responsive_resize(mut self) -> Self {
-        self.responsive_resize = true;
+    /// Use this when the canvas should fill its container based on CSS layout
+    /// rules rather than having a fixed pixel size.
+    pub fn disable_auto_css_resize(mut self) -> Self {
+        self.disable_auto_css_resize = true;
         self
     }
 }
@@ -688,6 +689,8 @@ impl WebGl2Backend {
             beamterm
         };
 
+        let beamterm = beamterm.auto_resize_canvas_css(!options.disable_auto_css_resize);
+
         Ok(beamterm.build()?)
     }
 }
@@ -722,13 +725,6 @@ impl Backend for WebGl2Backend {
         self.toggle_cursor(); // show cursor before rendering
         self.beamterm.render_frame().map_err(Error::from)?;
         self.toggle_cursor(); // restore cell to previous state
-
-        // For responsive layouts, clear inline CSS so external rules take effect
-        if self.options.responsive_resize {
-            let style = self.beamterm.canvas().style();
-            let _ = style.remove_property("width");
-            let _ = style.remove_property("height");
-        }
 
         self.measure_end(WEBGL_RENDER_MARK);
 
