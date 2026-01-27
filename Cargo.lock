@@ -33,9 +33,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "beamterm-data"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5a70ff46e4e31f7b921e7c1c527cb4086765eb2393dff52a1a67a7c71e199c0"
+checksum = "c27be7035a920d4507f78264a0ee99fcd70e7d179be4b453da737f5e40155e04"
 dependencies = [
  "compact_str",
  "miniz_oxide",
@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "beamterm-renderer"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89eb957a01ba980c6cc8718ffc4186630e0e04306805be2e6dadec7294d795fb"
+checksum = "9b67db3888a56bc541c93e58196abcf4385446545d4889601f09ab0569093706"
 dependencies = [
  "beamterm-data",
  "bitflags",
