@@ -5,9 +5,14 @@ use std::io::{Error as IoError, Result as IoResult};
 use crate::{
     backend::{
         color::{actual_bg_color, actual_fg_color},
+        event_callback::{
+            create_mouse_event, EventCallback, MouseConfig, KEY_EVENT_TYPES, MOUSE_EVENT_TYPES,
+        },
         utils::*,
     },
     error::Error,
+    event::{KeyEvent, MouseEvent},
+    render::WebEventHandler,
     CursorShape,
 };
 use ratatui::{
@@ -113,7 +118,6 @@ impl Canvas {
 /// Canvas backend.
 ///
 /// This backend renders the buffer onto a HTML canvas element.
-#[derive(Debug)]
 pub struct CanvasBackend {
     /// Whether the canvas has been initialized.
     initialized: bool,
@@ -136,6 +140,31 @@ pub struct CanvasBackend {
     cursor_shape: CursorShape,
     /// Draw cell boundaries with specified color.
     debug_mode: Option<String>,
+    /// Mouse event callback handler.
+    mouse_callback: Option<MouseCallbackState>,
+    /// Key event callback handler.
+    key_callback: Option<EventCallback<web_sys::KeyboardEvent>>,
+}
+
+/// Type alias for mouse event callback state.
+type MouseCallbackState = EventCallback<web_sys::MouseEvent>;
+
+impl std::fmt::Debug for CanvasBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CanvasBackend")
+            .field("initialized", &self.initialized)
+            .field("always_clip_cells", &self.always_clip_cells)
+            .field(
+                "buffer",
+                &format!("[{}x{}]", self.buffer[0].len(), self.buffer.len()),
+            )
+            .field("cursor_position", &self.cursor_position)
+            .field("cursor_shape", &self.cursor_shape)
+            .field("debug_mode", &self.debug_mode)
+            .field("mouse_callback", &self.mouse_callback.is_some())
+            .field("key_callback", &self.key_callback.is_some())
+            .finish()
+    }
 }
 
 impl CanvasBackend {
@@ -175,6 +204,8 @@ impl CanvasBackend {
             cursor_position: None,
             cursor_shape: CursorShape::SteadyBlock,
             debug_mode: None,
+            mouse_callback: None,
+            key_callback: None,
         })
     }
 
@@ -545,6 +576,77 @@ impl Backend for CanvasBackend {
             ClearType::All => self.clear(),
             _ => Err(IoError::other("unimplemented")),
         }
+    }
+}
+
+impl WebEventHandler for CanvasBackend {
+    fn on_mouse_event<F>(&mut self, mut callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_mouse_events();
+
+        // Get grid dimensions from the buffer
+        let grid_width = self.buffer[0].len() as u16;
+        let grid_height = self.buffer.len() as u16;
+
+        // Configure coordinate translation for canvas backend
+        let config = MouseConfig::new(grid_width, grid_height)
+            .with_offset(5.0) // Canvas translation offset
+            .with_cell_dimensions(CELL_WIDTH, CELL_HEIGHT);
+
+        let element: web_sys::Element = self.canvas.inner.clone().into();
+        let element_for_closure = element.clone();
+
+        // Create mouse event callback
+        let mouse_callback = EventCallback::new(
+            element,
+            MOUSE_EVENT_TYPES,
+            move |event: web_sys::MouseEvent| {
+                let mouse_event = create_mouse_event(&event, &element_for_closure, &config);
+                callback(mouse_event);
+            },
+        )?;
+
+        self.mouse_callback = Some(mouse_callback);
+
+        Ok(())
+    }
+
+    fn clear_mouse_events(&mut self) {
+        // Drop the callback, which will remove the event listeners
+        self.mouse_callback = None;
+    }
+
+    fn on_key_event<F>(&mut self, mut callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_key_events();
+
+        let element: web_sys::Element = self.canvas.inner.clone().into();
+
+        // Make the canvas focusable so it can receive key events
+        self.canvas
+            .inner
+            .set_attribute("tabindex", "0")
+            .map_err(Error::from)?;
+
+        self.key_callback = Some(EventCallback::new(
+            element,
+            KEY_EVENT_TYPES,
+            move |event: web_sys::KeyboardEvent| {
+                callback(event.into());
+            },
+        )?);
+
+        Ok(())
+    }
+
+    fn clear_key_events(&mut self) {
+        self.key_callback = None;
     }
 }
 

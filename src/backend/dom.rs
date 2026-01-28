@@ -17,7 +17,18 @@ use web_sys::{
 
 use unicode_width::UnicodeWidthStr;
 
-use crate::{backend::utils::*, error::Error, CursorShape};
+use crate::{
+    backend::{
+        event_callback::{
+            create_mouse_event, EventCallback, MouseConfig, KEY_EVENT_TYPES, MOUSE_EVENT_TYPES,
+        },
+        utils::*,
+    },
+    error::Error,
+    event::{KeyEvent, MouseEvent},
+    render::WebEventHandler,
+    CursorShape,
+};
 
 /// Default cell size used as a fallback when measurement fails.
 const DEFAULT_CELL_SIZE: (f64, f64) = (10.0, 20.0);
@@ -64,7 +75,6 @@ impl DomBackendOptions {
 ///
 /// In other words, it transforms the [`Cell`]s into `<span>`s which are then
 /// appended to a `<pre>` element.
-#[derive(Debug)]
 pub struct DomBackend {
     /// Whether the backend has been initialized.
     initialized: Rc<RefCell<bool>>,
@@ -88,6 +98,27 @@ pub struct DomBackend {
     size: Size,
     /// Measured cell dimensions in pixels (width, height).
     cell_size: (f64, f64),
+    /// Mouse event callback handler.
+    mouse_callback: Option<DomMouseCallbackState>,
+    /// Key event callback handler.
+    key_callback: Option<EventCallback<web_sys::KeyboardEvent>>,
+}
+
+/// Type alias for mouse event callback state.
+type DomMouseCallbackState = EventCallback<web_sys::MouseEvent>;
+
+impl std::fmt::Debug for DomBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DomBackend")
+            .field("initialized", &self.initialized)
+            .field("cells", &format!("[{} cells]", self.cells.len()))
+            .field("size", &self.size)
+            .field("cell_size", &self.cell_size)
+            .field("cursor_position", &self.cursor_position)
+            .field("mouse_callback", &self.mouse_callback.is_some())
+            .field("key_callback", &self.key_callback.is_some())
+            .finish()
+    }
 }
 
 impl DomBackend {
@@ -130,6 +161,8 @@ impl DomBackend {
             last_cursor_position: None,
             size,
             cell_size,
+            mouse_callback: None,
+            key_callback: None,
         };
         backend.add_on_resize_listener();
         backend.reset_grid()?;
@@ -391,5 +424,65 @@ impl Backend for DomBackend {
             ClearType::All => self.clear(),
             _ => Err(IoError::other("unimplemented")),
         }
+    }
+}
+
+impl WebEventHandler for DomBackend {
+    fn on_mouse_event<F>(&mut self, mut callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_mouse_events();
+
+        // Configure coordinate translation for DOM backend
+        // Cell dimensions are derived from element dimensions / grid size
+        let config = MouseConfig::new(self.size.width, self.size.height);
+
+        // Use the grid element for coordinate calculation
+        let element = self.grid.clone();
+
+        // Create mouse event callback
+        let mouse_callback = EventCallback::new(
+            self.grid.clone(),
+            MOUSE_EVENT_TYPES,
+            move |event: web_sys::MouseEvent| {
+                let mouse_event = create_mouse_event(&event, &element, &config);
+                callback(mouse_event);
+            },
+        )?;
+
+        self.mouse_callback = Some(mouse_callback);
+
+        Ok(())
+    }
+
+    fn clear_mouse_events(&mut self) {
+        self.mouse_callback = None;
+    }
+
+    fn on_key_event<F>(&mut self, mut callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_key_events();
+
+        // Make the grid element focusable so it can receive key events
+        self.grid.set_attribute("tabindex", "0")?;
+
+        self.key_callback = Some(EventCallback::new(
+            self.grid.clone(),
+            KEY_EVENT_TYPES,
+            move |event: web_sys::KeyboardEvent| {
+                callback(event.into());
+            },
+        )?);
+
+        Ok(())
+    }
+
+    fn clear_key_events(&mut self) {
+        self.key_callback = None;
     }
 }

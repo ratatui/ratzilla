@@ -1,6 +1,8 @@
 use crate::{
     backend::{color::to_rgb, utils::*},
     error::Error,
+    event::{KeyEvent, MouseEvent},
+    render::WebEventHandler,
     CursorShape,
 };
 pub use beamterm_renderer::SelectionMode;
@@ -321,6 +323,8 @@ pub struct WebGl2Backend {
     hyperlink_callback: Option<HyperlinkCallback>,
     /// Shared state for deferred hyperlink processing in [`WebGl2Backend::flush`].
     hyperlink_state: Option<Rc<std::cell::Cell<PendingHyperlinkEvent>>>,
+    /// User-provided mouse event handler.
+    _user_mouse_handler: Option<TerminalMouseHandler>,
 }
 
 impl WebGl2Backend {
@@ -372,6 +376,7 @@ impl WebGl2Backend {
             cursor_over_hyperlink: false,
             hyperlink_callback,
             hyperlink_state,
+            _user_mouse_handler: None,
         })
     }
 
@@ -806,6 +811,116 @@ impl std::fmt::Debug for HyperlinkCallback {
         f.debug_struct("CallbackWrapper")
             .field("callback", &"<callback>")
             .finish()
+    }
+}
+
+/// Mouse event handling for [`WebGl2Backend`].
+///
+/// This implementation delegates to beamterm's [`TerminalMouseHandler`], which provides
+/// native grid coordinate translation. However, beamterm only supports a subset of
+/// mouse events:
+///
+/// | Supported | Event Type |
+/// |-----------|------------|
+/// | ✓ | [`MouseEventKind::Moved`] |
+/// | ✓ | [`MouseEventKind::ButtonDown`] |
+/// | ✓ | [`MouseEventKind::ButtonUp`] |
+/// | ✗ | [`MouseEventKind::SingleClick`] |
+/// | ✗ | [`MouseEventKind::DoubleClick`] |
+/// | ✗ | [`MouseEventKind::Entered`] |
+/// | ✗ | [`MouseEventKind::Exited`] |
+///
+/// For full mouse event support, consider using [`CanvasBackend`] or [`DomBackend`].
+///
+/// **Note**: Keyboard events are not supported by this backend.
+///
+/// [`CanvasBackend`]: crate::CanvasBackend
+/// [`DomBackend`]: crate::DomBackend
+/// [`MouseEventKind::Moved`]: crate::event::MouseEventKind::Moved
+/// [`MouseEventKind::ButtonDown`]: crate::event::MouseEventKind::ButtonDown
+/// [`MouseEventKind::ButtonUp`]: crate::event::MouseEventKind::ButtonUp
+/// [`MouseEventKind::SingleClick`]: crate::event::MouseEventKind::SingleClick
+/// [`MouseEventKind::DoubleClick`]: crate::event::MouseEventKind::DoubleClick
+/// [`MouseEventKind::Entered`]: crate::event::MouseEventKind::Entered
+/// [`MouseEventKind::Exited`]: crate::event::MouseEventKind::Exited
+impl WebEventHandler for WebGl2Backend {
+    fn on_mouse_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_mouse_events();
+
+        let grid = self.beamterm.grid();
+        let canvas = self.beamterm.canvas();
+
+        // Wrap the callback in Rc<RefCell> for sharing
+        let callback = Rc::new(RefCell::new(callback));
+        let callback_clone = callback.clone();
+
+        // Create a TerminalMouseHandler that delegates to our callback
+        let mouse_handler = TerminalMouseHandler::new(
+            canvas,
+            grid,
+            move |event: TerminalMouseEvent, _grid: &beamterm_renderer::TerminalGrid| {
+                let mouse_event = beamterm_event_to_mouse_event(&event);
+                if let Ok(mut cb) = callback_clone.try_borrow_mut() {
+                    cb(mouse_event);
+                }
+            },
+        )?;
+
+        self._user_mouse_handler = Some(mouse_handler);
+
+        Ok(())
+    }
+
+    fn clear_mouse_events(&mut self) {
+        self._user_mouse_handler = None;
+    }
+
+    fn on_key_event<F>(&mut self, _callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        // Key events are not supported for WebGl2Backend.
+        // The canvas would need to be made focusable and handle keyboard events.
+        // We silently succeed here so apps can use the same code for all backends.
+        Ok(())
+    }
+
+    fn clear_key_events(&mut self) {
+        // No-op for WebGl2Backend since key events aren't supported
+    }
+}
+
+/// Converts a beamterm `TerminalMouseEvent` to our `MouseEvent` type.
+fn beamterm_event_to_mouse_event(event: &TerminalMouseEvent) -> MouseEvent {
+    use crate::event::{MouseButton, MouseEventKind};
+
+    let button = match event.button() {
+        0 => MouseButton::Left,
+        1 => MouseButton::Middle,
+        2 => MouseButton::Right,
+        3 => MouseButton::Back,
+        4 => MouseButton::Forward,
+        _ => MouseButton::Unidentified,
+    };
+
+    // beamterm only provides MouseMove, MouseDown, and MouseUp events
+    let kind = match event.event_type {
+        MouseEventType::MouseMove => MouseEventKind::Moved,
+        MouseEventType::MouseDown => MouseEventKind::ButtonDown(button),
+        MouseEventType::MouseUp => MouseEventKind::ButtonUp(button),
+    };
+
+    MouseEvent {
+        kind,
+        col: event.col,
+        row: event.row,
+        ctrl: event.ctrl_key(),
+        alt: event.alt_key(),
+        shift: event.shift_key(),
     }
 }
 

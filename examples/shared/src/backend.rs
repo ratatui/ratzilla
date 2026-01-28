@@ -1,8 +1,10 @@
 use crate::{fps, utils::inject_backend_footer};
 use ratzilla::{
     backend::{canvas::CanvasBackendOptions, dom::DomBackendOptions, webgl2::WebGl2BackendOptions},
+    error::Error,
+    event::{KeyEvent, MouseEvent},
     ratatui::{backend::Backend, prelude::backend::ClearType, Terminal, TerminalOptions},
-    CanvasBackend, DomBackend, WebGl2Backend,
+    CanvasBackend, DomBackend, WebEventHandler, WebGl2Backend,
 };
 use std::{convert::TryFrom, fmt, io};
 use web_sys::{window, Url};
@@ -173,6 +175,46 @@ impl Backend for RatzillaBackend {
     }
 }
 
+impl WebEventHandler for RatzillaBackend {
+    fn on_mouse_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.on_mouse_event(callback),
+            RatzillaBackend::Canvas(backend) => backend.on_mouse_event(callback),
+            RatzillaBackend::WebGl2(backend) => backend.on_mouse_event(callback),
+        }
+    }
+
+    fn clear_mouse_events(&mut self) {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.clear_mouse_events(),
+            RatzillaBackend::Canvas(backend) => backend.clear_mouse_events(),
+            RatzillaBackend::WebGl2(backend) => backend.clear_mouse_events(),
+        }
+    }
+
+    fn on_key_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.on_key_event(callback),
+            RatzillaBackend::Canvas(backend) => backend.on_key_event(callback),
+            RatzillaBackend::WebGl2(backend) => backend.on_key_event(callback),
+        }
+    }
+
+    fn clear_key_events(&mut self) {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.clear_key_events(),
+            RatzillaBackend::Canvas(backend) => backend.clear_key_events(),
+            RatzillaBackend::WebGl2(backend) => backend.clear_key_events(),
+        }
+    }
+}
+
 /// Backend wrapper that automatically tracks FPS by recording frames on each flush.
 ///
 /// This wrapper delegates all Backend trait methods to the inner RatzillaBackend
@@ -261,6 +303,30 @@ impl Backend for FpsTrackingBackend {
             ClearType::All => self.clear(),
             _ => Err(io::Error::other("unimplemented")),
         }
+    }
+}
+
+impl WebEventHandler for FpsTrackingBackend {
+    fn on_mouse_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        self.inner.on_mouse_event(callback)
+    }
+
+    fn clear_mouse_events(&mut self) {
+        self.inner.clear_mouse_events()
+    }
+
+    fn on_key_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        self.inner.on_key_event(callback)
+    }
+
+    fn clear_key_events(&mut self) {
+        self.inner.clear_key_events()
     }
 }
 
