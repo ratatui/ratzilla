@@ -8,7 +8,7 @@
 //!   even for fullscreen terminals with all cells changing.
 //!
 //! - [`CanvasBackend`]: Canvas 2D API with Unicode support via browser font rendering.
-//!   Good fallback for the `WebGl2Backend`, if webgl2 isn't available. Does not support hyperlinks
+//!   Good fallback for the `WebGl2Backend`, if WebGL2 isn't available. Does not support hyperlinks
 //!   or text selection, but can render dynamic Unicode and single-cell emoji.
 //!
 //! - [`DomBackend`]: Renders cells as HTML elements. Most compatible, but slowest for large
