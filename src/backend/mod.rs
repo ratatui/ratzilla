@@ -4,14 +4,15 @@
 //! each with different performance characteristics and trade-offs:
 //!
 //! - [`WebGl2Backend`]: GPU-accelerated rendering powered by [beamterm][beamterm]. Uses prebuilt
-//!   or runtime generated font atlases. Best performance, capable of 60fps on large terminals.
+//!   or runtime generated font atlases. Very low overhead, typically under 1ms CPU time per frame,
+//!   even for fullscreen terminals with all cells changing.
 //!
-//! - [`CanvasBackend`]: Canvas 2D API with full Unicode support via browser font rendering.
-//!   Good fallback when WebGL2. Does not support hyperlinks or text selection, but can render
-//!   dynamic Unicode/emoji.
+//! - [`CanvasBackend`]: Canvas 2D API with Unicode support via browser font rendering.
+//!   Good fallback for the `WebGl2Backend`, if webgl2 isn't available. Does not support hyperlinks
+//!   or text selection, but can render dynamic Unicode and single-cell emoji.
 //!
-//! - [`DomBackend`]: Renders cells as HTML elements. Most compatible and accessible,
-//!   supports hyperlinks, but slowest for large terminals.
+//! - [`DomBackend`]: Renders cells as HTML elements. Most compatible, but slowest for large
+//!   terminals.
 //!
 //! [beamterm]: https://github.com/junkdog/beamterm
 //!
@@ -24,17 +25,19 @@
 //! | **Hyperlinks**               | ✓          | ✗             | ✓              |
 //! | **Text Selection**           | ✓          | ✗             | ✓              |
 //! | **Accessibility**            | ✓          | Limited       | Limited        |
-//! | **Unicode/Emoji Support**    | Full       | Full          | Full¹          |
+//! | **Unicode/Emoji Support**    | Full       | Limited²      | Full¹          |
 //! | **Dynamic Characters**       | ✓          | ✓             | ✓¹             |
 //! | **Font Variants**            | ✓          | Regular only  | ✓              |
 //! | **Underline**                | ✓          | ✗             | ✓              |
 //! | **Strikethrough**            | ✓          | ✗             | ✓              |
 //! | **Browser Support**          | All        | All           | Modern (2017+) |
 //!
-//! ¹: The [dynamic font atlas](webgl2::WebGl2BackendOptions::dynamic_font_atlas) rasterizes
+//! ¹: The [dynamic font atlas](webgl2::FontAtlasConfig::Dynamic) rasterizes
 //!    glyphs on demand with full Unicode/emoji and font variant support. The
-//!    [static font atlas](webgl2::WebGl2BackendOptions::font_atlas) is limited to glyphs
-//!    included at atlas build time.
+//!    [static font atlas](webgl2::FontAtlasConfig::Static) is limited to glyphs
+//!    compiled into the `.atlas` file.
+//! ²: Unicode is supported, but emoji only render correctly when it spans one cell.
+//!    Most emoji occupy two cells.
 //!
 //! ## Choosing a Backend
 //!
