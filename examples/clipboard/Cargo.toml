@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 color-eyre = "0.6.5"
 console_error_panic_hook.workspace = true
-ratatui = { version = "0.30.0", default-features = false }
+ratatui = { version = "0.30.0", default-features = false, features = ["layout-cache"] }
 ratzilla.workspace = true
 examples-shared.workspace = true
 wasm-bindgen.workspace = true
