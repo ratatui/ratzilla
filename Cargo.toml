@@ -17,6 +17,7 @@ web-sys = { version = "0.3.81", features = [
     'console',
     'CanvasRenderingContext2d',
     'Document',
+    'DomRect',
     'Element',
     'HtmlCanvasElement',
     'HtmlElement',
