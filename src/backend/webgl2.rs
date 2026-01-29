@@ -1,5 +1,9 @@
 use crate::{
-    backend::{color::to_rgb, utils::*},
+    backend::{
+        color::to_rgb,
+        event_callback::{EventCallback, KEY_EVENT_TYPES},
+        utils::*,
+    },
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,
@@ -301,6 +305,8 @@ pub struct WebGl2Backend {
     _hyperlink_callback: Option<HyperlinkCallback>,
     /// User-provided mouse event handler.
     _user_mouse_handler: Option<TerminalMouseHandler>,
+    /// User-provided key event handler.
+    _user_key_handler: Option<EventCallback<web_sys::KeyboardEvent>>,
 }
 
 impl WebGl2Backend {
@@ -376,6 +382,7 @@ impl WebGl2Backend {
             cursor_over_hyperlink,
             _hyperlink_callback: hyperlink_callback,
             _user_mouse_handler: None,
+            _user_key_handler: None,
         })
     }
 
@@ -934,11 +941,11 @@ impl std::fmt::Debug for HyperlinkCallback {
     }
 }
 
-/// Mouse event handling for [`WebGl2Backend`].
+/// Event handling for [`WebGl2Backend`].
 ///
-/// This implementation delegates to beamterm's [`TerminalMouseHandler`], which provides
-/// native grid coordinate translation. However, beamterm only supports a subset of
-/// mouse events:
+/// This implementation delegates mouse events to beamterm's [`TerminalMouseHandler`],
+/// which provides native grid coordinate translation. However, beamterm only supports
+/// a subset of mouse events:
 ///
 /// | Supported | Event Type |
 /// |-----------|------------|
@@ -952,7 +959,7 @@ impl std::fmt::Debug for HyperlinkCallback {
 ///
 /// For full mouse event support, consider using [`CanvasBackend`] or [`DomBackend`].
 ///
-/// **Note**: Keyboard events are not supported by this backend.
+/// Keyboard events are supported by making the canvas focusable with `tabindex="0"`.
 ///
 /// [`CanvasBackend`]: crate::CanvasBackend
 /// [`DomBackend`]: crate::DomBackend
@@ -999,18 +1006,32 @@ impl WebEventHandler for WebGl2Backend {
         self._user_mouse_handler = None;
     }
 
-    fn on_key_event<F>(&mut self, _callback: F) -> Result<(), Error>
+    fn on_key_event<F>(&mut self, mut callback: F) -> Result<(), Error>
     where
         F: FnMut(KeyEvent) + 'static,
     {
-        // Key events are not supported for WebGl2Backend.
-        // The canvas would need to be made focusable and handle keyboard events.
-        // We silently succeed here so apps can use the same code for all backends.
+        // Clear any existing handlers first
+        self.clear_key_events();
+
+        let canvas = self.beamterm.canvas();
+        let element: web_sys::Element = canvas.clone().into();
+
+        // Make the canvas focusable so it can receive key events
+        canvas.set_attribute("tabindex", "0").map_err(Error::from)?;
+
+        self._user_key_handler = Some(EventCallback::new(
+            element,
+            KEY_EVENT_TYPES,
+            move |event: web_sys::KeyboardEvent| {
+                callback(event.into());
+            },
+        )?);
+
         Ok(())
     }
 
     fn clear_key_events(&mut self) {
-        // No-op for WebGl2Backend since key events aren't supported
+        self._user_key_handler = None;
     }
 }
 
