@@ -3,6 +3,7 @@
 //! This module provides utilities for managing web event listeners with proper
 //! lifecycle management and coordinate translation for mouse events.
 
+use std::fmt::Formatter;
 use web_sys::{
     wasm_bindgen::{convert::FromWasmAbi, prelude::Closure, JsCast},
     Element,
@@ -61,6 +62,15 @@ impl<T: 'static> Drop for EventCallback<T> {
                 self.closure.as_ref().unchecked_ref(),
             );
         }
+    }
+}
+
+impl<T: 'static> std::fmt::Debug for EventCallback<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EventCallback")
+            .field("event_types", &self.event_types)
+            .field("element", &self.element)
+            .finish()
     }
 }
 

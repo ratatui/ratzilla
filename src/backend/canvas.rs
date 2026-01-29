@@ -118,6 +118,7 @@ impl Canvas {
 /// Canvas backend.
 ///
 /// This backend renders the buffer onto a HTML canvas element.
+#[derive(Debug)]
 pub struct CanvasBackend {
     /// Whether the canvas has been initialized.
     initialized: bool,
@@ -148,24 +149,6 @@ pub struct CanvasBackend {
 
 /// Type alias for mouse event callback state.
 type MouseCallbackState = EventCallback<web_sys::MouseEvent>;
-
-impl std::fmt::Debug for CanvasBackend {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CanvasBackend")
-            .field("initialized", &self.initialized)
-            .field("always_clip_cells", &self.always_clip_cells)
-            .field(
-                "buffer",
-                &format!("[{}x{}]", self.buffer[0].len(), self.buffer.len()),
-            )
-            .field("cursor_position", &self.cursor_position)
-            .field("cursor_shape", &self.cursor_shape)
-            .field("debug_mode", &self.debug_mode)
-            .field("mouse_callback", &self.mouse_callback.is_some())
-            .field("key_callback", &self.key_callback.is_some())
-            .finish()
-    }
-}
 
 impl CanvasBackend {
     /// Constructs a new [`CanvasBackend`].
@@ -654,7 +637,7 @@ impl WebEventHandler for CanvasBackend {
 ///
 /// This reduces the number of draw calls to the canvas API by coalescing adjacent cells
 /// with identical colors into larger rectangles, which is particularly beneficial for
-/// WASM where calls are quiteexpensive.
+/// WASM where calls are quite expensive.
 struct RowColorOptimizer {
     /// The currently accumulating region and its color
     pending_region: Option<(Rect, Color)>,
