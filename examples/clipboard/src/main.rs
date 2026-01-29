@@ -24,12 +24,12 @@ fn main() -> io::Result<()> {
 
     let state = Rc::new(App::default());
     let event_state = Rc::clone(&state);
-    let _ = terminal.on_key_event(move |key_event| {
+    terminal.on_key_event(move |key_event| {
         let event_state = event_state.clone();
         wasm_bindgen_futures::spawn_local(
             async move { event_state.handle_events(key_event).await },
         );
-    });
+    })?;
 
     let render_state = Rc::clone(&state);
     terminal.draw_web(move |frame| {

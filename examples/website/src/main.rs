@@ -64,7 +64,7 @@ fn main() -> io::Result<()> {
         .build_terminal()?;
 
     let mut state = State::default();
-    let _ = terminal.on_key_event(move |key| handle_key_event(key));
+    terminal.on_key_event(move |key| handle_key_event(key))?;
     terminal.draw_web(move |f| ui(f, &mut state));
     Ok(())
 }

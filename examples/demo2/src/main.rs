@@ -57,12 +57,12 @@ fn main() -> std::io::Result<()> {
         .build_terminal()?;
     
     let app = Rc::new(RefCell::new(App::default()));
-    let _ = terminal.on_key_event({
+    terminal.on_key_event({
         let app = app.clone();
         move |key_event| {
             app.borrow_mut().handle_key_press(key_event);
         }
-    });
+    })?;
     terminal.draw_web(move |f| {
         let app = app.borrow_mut();
         app.draw(f);

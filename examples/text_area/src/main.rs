@@ -17,13 +17,13 @@ fn main() -> io::Result<()> {
 
     let app = Rc::new(RefCell::new(App::new()));
 
-    let _ = terminal.on_key_event({
+    terminal.on_key_event({
         let event_state = app.clone();
         move |key_event| {
             let mut state = event_state.borrow_mut();
             state.handle_events(key_event);
         }
-    });
+    })?;
 
     terminal.draw_web({
         let render_state = app.clone();
