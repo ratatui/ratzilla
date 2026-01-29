@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         .webgl2_options(webgl2_options)
         .build_terminal()?;
 
-    let _ = terminal.on_key_event({
+    terminal.on_key_event({
         let app_state_cloned = app_state.clone();
         move |event| {
             let mut app_state = app_state_cloned.borrow_mut();
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
                 _ => {}
             }
         }
-    });
+    })?;
 
     terminal.draw_web(move |f| {
         let mut app_state = app_state.borrow_mut();

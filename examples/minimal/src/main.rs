@@ -43,13 +43,7 @@ fn main() -> io::Result<()> {
                 MouseEventKind::Moved => None,
                 MouseEventKind::ButtonDown(btn) => Some(btn),
                 MouseEventKind::ButtonUp(btn) => Some(btn),
-                MouseEventKind::SingleClick(_) |
-                MouseEventKind::DoubleClick(_) |
-                MouseEventKind::Exited  |
-                MouseEventKind::Entered |
-                MouseEventKind::Unidentified => {
-                    return;
-                }
+                _ => return
             };
 
 
