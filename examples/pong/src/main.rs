@@ -14,7 +14,7 @@ use ratzilla::ratatui::{
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
 use ratzilla::backend::canvas::CanvasBackendOptions;
 use ratzilla::backend::dom::DomBackendOptions;
-use ratzilla::backend::webgl2::WebGl2BackendOptions;
+use ratzilla::backend::webgl2::{SelectionMode, WebGl2BackendOptions};
 
 struct App {
     count: u64,
@@ -65,11 +65,11 @@ fn main() -> std::io::Result<()> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     let app_state = Rc::new(RefCell::new(App::new()));
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
         .webgl2_options(WebGl2BackendOptions::new()
             .grid_id("container")
             .enable_hyperlinks()
-            .enable_mouse_selection()
+            .enable_mouse_selection_with_mode(SelectionMode::default())
         )
         .canvas_options(CanvasBackendOptions::new()
             .grid_id("container")
@@ -77,7 +77,7 @@ fn main() -> std::io::Result<()> {
         .dom_options(DomBackendOptions::new(Some("container".into()), CursorShape::SteadyBlock))
         .build_terminal()?;
 
-    terminal.on_key_event({
+    let _ = terminal.on_key_event({
         let app_state_cloned = app_state.clone();
         move |event| {
             let mut app_state = app_state_cloned.borrow_mut();

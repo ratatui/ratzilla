@@ -5,7 +5,6 @@ use ratzilla::ratatui::{
     widgets,
     widgets::canvas,
     style::Color,
-    Terminal,
 };
 
 use ratzilla::{WebRenderer};
