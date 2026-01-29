@@ -12,7 +12,7 @@ use app::App;
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
 use ratzilla::event::KeyCode;
 use ratzilla::WebRenderer;
-use ratzilla::{backend::canvas::CanvasBackendOptions, backend::webgl2::WebGl2BackendOptions};
+use ratzilla::{backend::canvas::CanvasBackendOptions, backend::webgl2::{SelectionMode, WebGl2BackendOptions}};
 
 mod app;
 
@@ -28,15 +28,15 @@ fn main() -> Result<()> {
     let webgl2_options = WebGl2BackendOptions::new()
         .measure_performance(true)
         .enable_console_debug_api()
-        .enable_mouse_selection()
+        .enable_mouse_selection_with_mode(SelectionMode::default())
         .size((1600, 900));
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::WebGl2)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::WebGl2)
         .canvas_options(canvas_options)
         .webgl2_options(webgl2_options)
         .build_terminal()?;
 
-    terminal.on_key_event({
+    let _ = terminal.on_key_event({
         let app_state_cloned = app_state.clone();
         move |event| {
             let mut app_state = app_state_cloned.borrow_mut();

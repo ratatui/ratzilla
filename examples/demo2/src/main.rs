@@ -29,7 +29,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use app::App;
 use ratzilla::{
-    backend::webgl2::WebGl2BackendOptions,
+    backend::webgl2::{SelectionMode, WebGl2BackendOptions},
     ratatui::{layout::Rect, TerminalOptions, Viewport},
     WebRenderer,
 };
@@ -47,17 +47,17 @@ fn main() -> std::io::Result<()> {
     // using vhs in a 1280x640 sized window (github social preview size)
     let viewport = Viewport::Fixed(Rect::new(0, 0, 81, 18));
     
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Canvas)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Canvas)
         .webgl2_options(WebGl2BackendOptions::new()
             .measure_performance(true)
-            .enable_mouse_selection()
+            .enable_mouse_selection_with_mode(SelectionMode::default())
             .enable_console_debug_api()
         )
         .terminal_options(TerminalOptions { viewport })
         .build_terminal()?;
     
     let app = Rc::new(RefCell::new(App::default()));
-    terminal.on_key_event({
+    let _ = terminal.on_key_event({
         let app = app.clone();
         move |key_event| {
             app.borrow_mut().handle_key_press(key_event);

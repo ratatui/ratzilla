@@ -4,7 +4,7 @@ use ratatui::{
     layout::Alignment,
     style::{Color, Stylize},
     widgets::{Block, BorderType, Paragraph},
-    Frame, Terminal,
+    Frame,
 };
 
 use ratzilla::{
@@ -15,12 +15,12 @@ use examples_shared::backend::{BackendType, MultiBackendBuilder};
 
 fn main() -> io::Result<()> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
         .build_terminal()?;
 
     let state = Rc::new(App::default());
     let event_state = Rc::clone(&state);
-    terminal.on_key_event(move |key_event| {
+    let _ = terminal.on_key_event(move |key_event| {
         let event_state = event_state.clone();
         wasm_bindgen_futures::spawn_local(
             async move { event_state.handle_events(key_event).await },
