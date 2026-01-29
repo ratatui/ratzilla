@@ -23,7 +23,7 @@ use std::{
 };
 use web_sys::{wasm_bindgen::JsCast, window, Element};
 
-/// Re-export beamterm's atlas data type. Used by [`WebGl2BackendOptions::font_atlas`].
+/// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
 
 /// Font atlas configuration.
@@ -104,9 +104,9 @@ impl WebGl2BackendOptions {
         self
     }
 
-    /// Sets the fallback glyph to use for characters not in the font atlas.
+    /// Sets the fallback glyph for missing characters.
     ///
-    /// If not set, defaults to a space character (` `).
+    /// Used when a glyph is missing from the font atlas. Defaults to a space character.
     pub fn fallback_glyph(mut self, glyph: &str) -> Self {
         self.fallback_glyph = Some(glyph.into());
         self
@@ -231,12 +231,13 @@ impl WebGl2BackendOptions {
 ///
 /// WebGL2 is supported in all modern browsers (Chrome 56+, Firefox 51+, Safari 15+).
 ///
-/// ## Font Atlas Limitation
+/// ## Font Atlas Options
 ///
-/// [`WebGl2Backend`] uses prebuilt font atlases for performance. Characters not in the atlas
-/// will display as ` `. Use [`CanvasBackend`] if you need dynamic Unicode/emoji support.
+/// [`WebGl2Backend`] supports two font atlas modes via [`FontAtlasConfig`]:
 ///
-/// [`CanvasBackend`]: crate::backend::canvas::CanvasBackend
+/// - **Dynamic**: Rasterizes glyphs on demand with full Unicode/emoji and font variant support.
+/// - **Static** (default): Uses pre-generated `.atlas` files. The default atlas is embedded
+///   in beamterm. Characters not in the atlas display as the fallback glyph (space by default).
 ///
 /// # Performance Measurement
 ///
