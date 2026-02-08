@@ -65,6 +65,24 @@ pub trait WebRenderer {
         closure.forget();
     }
 
+    /// Handles wheel events.
+    ///
+    /// This method takes a closure that will be called on every `wheel` event.
+    fn on_wheel_event<F>(&self, mut callback: F)
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
+            callback(event.into());
+        });
+        let window = window().unwrap();
+        let document = window.document().unwrap();
+        document
+            .add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
+    }
+
     /// Requests an animation frame.
     fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         window()
