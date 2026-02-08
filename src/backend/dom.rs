@@ -115,8 +115,8 @@ impl DomBackend {
         let window = window().ok_or(Error::UnableToRetrieveWindow)?;
         let document = window.document().ok_or(Error::UnableToRetrieveDocument)?;
         let grid_parent = get_element_by_id_or_body(options.grid_id.as_ref())?;
-        let cell_size = Self::measure_cell_size(&document, &grid_parent)
-            .unwrap_or(DEFAULT_CELL_SIZE);
+        let cell_size =
+            Self::measure_cell_size(&document, &grid_parent).unwrap_or(DEFAULT_CELL_SIZE);
         let size = Self::calculate_size(&grid_parent, cell_size);
         let mut backend = Self {
             initialized: Rc::new(RefCell::new(false)),
@@ -143,7 +143,10 @@ impl DomBackend {
     /// `getBoundingClientRect()`, then removes the probe.
     fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
         let pre = document.create_element("pre")?;
-        pre.set_attribute("style", "margin: 0; padding: 0; border: 0; line-height: normal;")?;
+        pre.set_attribute(
+            "style",
+            "margin: 0; padding: 0; border: 0; line-height: normal;",
+        )?;
         let span = document.create_element("span")?;
         span.set_inner_html("\u{2588}");
         span.set_attribute("style", "display: inline-block; width: 1ch;")?;
@@ -177,10 +180,7 @@ impl DomBackend {
             (ww as f64, wh as f64)
         };
 
-        Size::new(
-            (w / cell_size.0) as u16,
-            (h / cell_size.1) as u16,
-        )
+        Size::new((w / cell_size.0) as u16, (h / cell_size.1) as u16)
     }
 
     /// Add a listener to the window resize event.
