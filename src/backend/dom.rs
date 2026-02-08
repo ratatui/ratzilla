@@ -10,10 +10,7 @@ use ratatui::{
     layout::{Position, Size},
     prelude::{backend::ClearType, Backend},
 };
-use web_sys::{
-    wasm_bindgen::{prelude::Closure, JsCast},
-    window, Document, Element, Window,
-};
+use web_sys::{window, Document, Element, Window};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -98,6 +95,8 @@ pub struct DomBackend {
     size: Size,
     /// Measured cell dimensions in pixels (width, height).
     cell_size: (f64, f64),
+    /// Resize event callback handler.
+    resize_callback: EventCallback<web_sys::Event>,
     /// Mouse event callback handler.
     mouse_callback: Option<DomMouseCallbackState>,
     /// Key event callback handler.
@@ -115,6 +114,7 @@ impl std::fmt::Debug for DomBackend {
             .field("size", &self.size)
             .field("cell_size", &self.cell_size)
             .field("cursor_position", &self.cursor_position)
+            .field("resize_callback", &"...")
             .field("mouse_callback", &self.mouse_callback.is_some())
             .field("key_callback", &self.key_callback.is_some())
             .finish()
@@ -149,8 +149,19 @@ impl DomBackend {
         let cell_size =
             Self::measure_cell_size(&document, &grid_parent).unwrap_or(DEFAULT_CELL_SIZE);
         let size = Self::calculate_size(&grid_parent, cell_size);
+
+        let initialized = Rc::new(RefCell::new(false));
+        let initialized_cb = initialized.clone();
+        let resize_callback = EventCallback::new(
+            window.clone(),
+            Self::RESIZE_EVENT_TYPES,
+            move |_: web_sys::Event| {
+                initialized_cb.replace(false);
+            },
+        )?;
+
         let mut backend = Self {
-            initialized: Rc::new(RefCell::new(false)),
+            initialized,
             cells: vec![],
             grid: document.create_element("div")?,
             grid_parent,
@@ -161,10 +172,10 @@ impl DomBackend {
             last_cursor_position: None,
             size,
             cell_size,
+            resize_callback,
             mouse_callback: None,
             key_callback: None,
         };
-        backend.add_on_resize_listener();
         backend.reset_grid()?;
         Ok(backend)
     }
@@ -216,16 +227,8 @@ impl DomBackend {
         Size::new((w / cell_size.0) as u16, (h / cell_size.1) as u16)
     }
 
-    /// Add a listener to the window resize event.
-    fn add_on_resize_listener(&mut self) {
-        let initialized = self.initialized.clone();
-        let closure = Closure::<dyn FnMut(_)>::new(move |_: web_sys::Event| {
-            initialized.replace(false);
-        });
-        self.window
-            .set_onresize(Some(closure.as_ref().unchecked_ref()));
-        closure.forget();
-    }
+    /// Resize event types.
+    const RESIZE_EVENT_TYPES: &[&str] = &["resize"];
 
     /// Reset the grid and clear the cells.
     fn reset_grid(&mut self) -> Result<(), Error> {
@@ -388,9 +391,10 @@ impl Backend for DomBackend {
     }
 
     fn size(&self) -> IoResult<Size> {
+        let size = get_size();
         Ok(Size::new(
-            self.size.width.saturating_sub(1),
-            self.size.height.saturating_sub(1),
+            size.width.saturating_sub(1),
+            size.height.saturating_sub(1),
         ))
     }
 

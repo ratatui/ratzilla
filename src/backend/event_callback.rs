@@ -6,7 +6,7 @@
 use std::fmt::Formatter;
 use web_sys::{
     wasm_bindgen::{convert::FromWasmAbi, prelude::Closure, JsCast},
-    Element,
+    Element, EventTarget,
 };
 
 use crate::{
@@ -21,8 +21,8 @@ use crate::{
 pub(super) struct EventCallback<T: 'static> {
     /// The event types this callback is registered for.
     event_types: &'static [&'static str],
-    /// The element the listeners are attached to.
-    element: Element,
+    /// The event target the listeners are attached to.
+    target: EventTarget,
     /// The closure that handles the events.
     #[allow(dead_code)]
     closure: Closure<dyn FnMut(T)>,
@@ -31,7 +31,7 @@ pub(super) struct EventCallback<T: 'static> {
 impl<T: 'static> EventCallback<T> {
     /// Creates a new [`EventCallback`] and attaches listeners to the element.
     pub fn new<F>(
-        element: Element,
+        target: impl Into<EventTarget>,
         event_types: &'static [&'static str],
         callback: F,
     ) -> Result<Self, Error>
@@ -39,16 +39,17 @@ impl<T: 'static> EventCallback<T> {
         F: FnMut(T) + 'static,
         T: JsCast + FromWasmAbi,
     {
+        let target = target.into();
         let closure = Closure::<dyn FnMut(T)>::new(callback);
 
         for event_type in event_types {
-            element
+            target
                 .add_event_listener_with_callback(event_type, closure.as_ref().unchecked_ref())?;
         }
 
         Ok(Self {
             event_types,
-            element,
+            target,
             closure,
         })
     }
@@ -57,7 +58,7 @@ impl<T: 'static> EventCallback<T> {
 impl<T: 'static> Drop for EventCallback<T> {
     fn drop(&mut self) {
         for event_type in self.event_types {
-            let _ = self.element.remove_event_listener_with_callback(
+            let _ = self.target.remove_event_listener_with_callback(
                 event_type,
                 self.closure.as_ref().unchecked_ref(),
             );
@@ -69,7 +70,7 @@ impl<T: 'static> std::fmt::Debug for EventCallback<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EventCallback")
             .field("event_types", &self.event_types)
-            .field("element", &self.element)
+            .field("target", &self.target)
             .finish()
     }
 }
