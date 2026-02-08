@@ -19,6 +19,9 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{backend::utils::*, error::Error, CursorShape};
 
+/// Default cell size used as a fallback when measurement fails.
+const DEFAULT_CELL_SIZE: (f64, f64) = (10.0, 20.0);
+
 /// Options for the [`DomBackend`].
 #[derive(Debug, Default)]
 pub struct DomBackendOptions {
@@ -83,6 +86,8 @@ pub struct DomBackend {
     last_cursor_position: Option<Position>,
     /// Buffer size to pass to [`ratatui::Terminal`]
     size: Size,
+    /// Measured cell dimensions in pixels (width, height).
+    cell_size: (f64, f64),
 }
 
 impl DomBackend {
@@ -109,21 +114,73 @@ impl DomBackend {
     pub fn new_with_options(options: DomBackendOptions) -> Result<Self, Error> {
         let window = window().ok_or(Error::UnableToRetrieveWindow)?;
         let document = window.document().ok_or(Error::UnableToRetrieveDocument)?;
+        let grid_parent = get_element_by_id_or_body(options.grid_id.as_ref())?;
+        let cell_size = Self::measure_cell_size(&document, &grid_parent)
+            .unwrap_or(DEFAULT_CELL_SIZE);
+        let size = Self::calculate_size(&grid_parent, cell_size);
         let mut backend = Self {
             initialized: Rc::new(RefCell::new(false)),
             cells: vec![],
             grid: document.create_element("div")?,
-            grid_parent: get_element_by_id_or_body(options.grid_id.as_ref())?,
+            grid_parent,
             options,
             window,
             document,
             cursor_position: None,
             last_cursor_position: None,
-            size: get_size(),
+            size,
+            cell_size,
         };
         backend.add_on_resize_listener();
         backend.reset_grid()?;
         Ok(backend)
+    }
+
+    /// Measures the pixel dimensions of a single terminal cell.
+    ///
+    /// Creates a temporary `<pre><span>` probe element that inherits the
+    /// page's CSS (font-family, font-size, etc.), measures it with
+    /// `getBoundingClientRect()`, then removes the probe.
+    fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
+        let pre = document.create_element("pre")?;
+        pre.set_attribute("style", "margin: 0; padding: 0; border: 0; line-height: normal;")?;
+        let span = document.create_element("span")?;
+        span.set_inner_html("\u{2588}");
+        span.set_attribute("style", "display: inline-block; width: 1ch;")?;
+        pre.append_child(&span)?;
+        parent.append_child(&pre)?;
+
+        let rect = span.get_bounding_client_rect();
+        let width = rect.width();
+        let height = rect.height();
+
+        parent.remove_child(&pre)?;
+
+        if width > 0.0 && height > 0.0 {
+            Ok((width, height))
+        } else {
+            Ok(DEFAULT_CELL_SIZE)
+        }
+    }
+
+    /// Calculates the grid size in cells based on the parent element's dimensions and cell size.
+    fn calculate_size(parent: &Element, cell_size: (f64, f64)) -> Size {
+        let rect = parent.get_bounding_client_rect();
+        let (parent_w, parent_h) = (rect.width(), rect.height());
+
+        // Fall back to window dimensions if the parent has no size
+        // (e.g. empty <body> with no explicit height)
+        let (w, h) = if parent_w > 0.0 && parent_h > 0.0 {
+            (parent_w, parent_h)
+        } else {
+            let (ww, wh) = get_raw_window_size();
+            (ww as f64, wh as f64)
+        };
+
+        Size::new(
+            (w / cell_size.0) as u16,
+            (h / cell_size.1) as u16,
+        )
     }
 
     /// Add a listener to the window resize event.
@@ -160,7 +217,8 @@ impl DomBackend {
 
             // Create a <pre> element for the line
             let pre = self.document.create_element("pre")?;
-            pre.set_attribute("style", "height: 15px;")?;
+            let line_height = format!("height: {}px;", self.cell_size.1);
+            pre.set_attribute("style", &line_height)?;
 
             // Append all elements (spans and anchors) to the <pre>
             for elem in line_cells {
@@ -201,8 +259,10 @@ impl Backend for DomBackend {
                 self.grid_parent.set_inner_html("");
                 self.reset_grid()?;
 
-                // update size
-                self.size = get_size();
+                // re-measure cell size and update grid dimensions
+                self.cell_size = Self::measure_cell_size(&self.document, &self.grid_parent)
+                    .unwrap_or(DEFAULT_CELL_SIZE);
+                self.size = Self::calculate_size(&self.grid_parent, self.cell_size);
             }
 
             self.grid_parent
