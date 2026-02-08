@@ -362,7 +362,13 @@ impl Backend for DomBackend {
     }
 
     fn window_size(&mut self) -> IoResult<WindowSize> {
-        unimplemented!()
+        Ok(WindowSize {
+            columns_rows: self.size,
+            pixels: Size::new(
+                (self.size.width as f64 * self.cell_size.0) as u16,
+                (self.size.height as f64 * self.cell_size.1) as u16,
+            ),
+        })
     }
 
     fn get_cursor_position(&mut self) -> IoResult<Position> {
