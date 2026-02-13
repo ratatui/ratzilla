@@ -35,17 +35,39 @@ const CELL_WIDTH: f64 = 10.0;
 const CELL_HEIGHT: f64 = 19.0;
 
 /// Options for the [`CanvasBackend`].
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CanvasBackendOptions {
     /// The element ID.
     grid_id: Option<String>,
     /// Override the automatically detected size.
     size: Option<(u32, u32)>,
+    /// Scale factor for the canvas. Setting this to a value greater than 1.0
+    /// will improve the rendering quality on high-DPI displays, at the cost
+    /// of performance.
+    ///
+    /// The memory usage of the canvas will increase with the square of the scale factor.
+    /// For example, a scale factor of 2.0 will use 4 times the memory.
+    ///
+    /// The default value is 1.0.
+    ///
+    /// Generally, a scale factor of 2.0 is a good compromise between quality and performance.
+    scale: f64,
     /// Always clip foreground drawing to the cell rectangle. Helpful when
     /// dealing with out-of-bounds rendering from problematic fonts. Enabling
     /// this option may cause some performance issues when dealing with large
     /// numbers of simultaneous changes.
     always_clip_cells: bool,
+}
+
+impl Default for CanvasBackendOptions {
+    fn default() -> Self {
+        Self {
+            grid_id: None,
+            size: None,
+            scale: 1.0,
+            always_clip_cells: false,
+        }
+    }
 }
 
 impl CanvasBackendOptions {
@@ -63,6 +85,28 @@ impl CanvasBackendOptions {
     /// Sets the size of the canvas, in pixels.
     pub fn size(mut self, size: (u32, u32)) -> Self {
         self.size = Some(size);
+        self
+    }
+
+    /// Sets the scale factor for the canvas. Setting this to a value greater than 1.0
+    /// will improve the rendering quality on high-DPI displays, at the cost
+    /// of performance.
+    ///
+    /// The memory usage of the canvas will increase with the square of the scale factor.
+    /// For example, a scale factor of 2.0 will use 4 times the memory.
+    ///
+    /// The default value is 1.0.
+    ///
+    /// Generally, a scale factor of 2.0 is a good compromise between quality and performance.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scale` is not positive.
+    pub fn scale(mut self, scale: f64) -> Self {
+        if scale <= 0.0 {
+            panic!("Scale must be greater than 0");
+        }
+        self.scale = scale;
         self
     }
 }
@@ -84,9 +128,13 @@ impl Canvas {
         parent_element: web_sys::Element,
         width: u32,
         height: u32,
+        scale: f64,
         background_color: Color,
     ) -> Result<Self, Error> {
-        let canvas = create_canvas_in_element(&parent_element, width, height)?;
+        let inner_width = (width as f64 * scale) as u32;
+        let inner_height = (height as f64 * scale) as u32;
+        let canvas = create_canvas_in_element(&parent_element, inner_width, inner_height)?;
+        canvas.set_attribute("style", &format!("width: {width}px; height: {height}px;"))?;
 
         let context_options = Map::new();
         context_options.set(&JsValue::from_str("alpha"), &Boolean::from(JsValue::TRUE));
@@ -101,6 +149,7 @@ impl Canvas {
             .expect("Unable to cast canvas context");
         context.set_font("16px monospace");
         context.set_text_baseline("top");
+        context.scale(scale, scale)?;
 
         Ok(Self {
             inner: canvas,
@@ -162,7 +211,7 @@ impl CanvasBackend {
             .size
             .unwrap_or_else(|| (parent.client_width() as u32, parent.client_height() as u32));
 
-        let canvas = Canvas::new(parent, width, height, Color::Black)?;
+        let canvas = Canvas::new(parent, width, height, options.scale, Color::Black)?;
         let buffer = get_sized_buffer_from_canvas(&canvas.inner);
         let changed_cells = bitvec![0; buffer.len() * buffer[0].len()];
         Ok(Self {
