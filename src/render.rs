@@ -111,13 +111,13 @@ where
 /// use ratzilla::{CanvasBackend, WebRenderer};
 /// use ratatui::Terminal;
 ///
-/// let mut terminal = Terminal::new(CanvasBackend::new().unwrap()).unwrap();
+/// let mut terminal = Terminal::new(CanvasBackend::new()?)?;
 ///
 /// // Set up mouse events with grid coordinate translation
 /// terminal.on_mouse_event(|event| {
 ///     // event.col and event.row are terminal grid coordinates
 ///     println!("Mouse at ({}, {})", event.col, event.row);
-/// }).unwrap();
+/// })?;
 /// ```
 pub trait WebEventHandler {
     /// Sets up mouse event handlers with coordinate translation.
