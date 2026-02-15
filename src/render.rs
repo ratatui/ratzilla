@@ -108,6 +108,7 @@ where
 /// # Example
 ///
 /// ```no_run
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use ratzilla::{CanvasBackend, WebRenderer};
 /// use ratatui::Terminal;
 ///
@@ -118,6 +119,8 @@ where
 ///     // event.col and event.row are terminal grid coordinates
 ///     println!("Mouse at ({}, {})", event.col, event.row);
 /// })?;
+/// # Ok(())
+/// # }
 /// ```
 pub trait WebEventHandler {
     /// Sets up mouse event handlers with coordinate translation.
