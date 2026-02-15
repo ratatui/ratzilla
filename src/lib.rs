@@ -31,4 +31,4 @@ pub use backend::{
     dom::DomBackend,
     webgl2::{FontAtlasConfig, SelectionMode, WebGl2Backend},
 };
-pub use render::WebRenderer;
+pub use render::{WebEventHandler, WebRenderer};

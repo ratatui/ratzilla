@@ -6,9 +6,7 @@ use ratzilla::ratatui::{
     widgets::{Block, Paragraph},
 };
 
-use ratzilla::{
-    event::KeyCode, event::MouseButton, event::MouseEventKind, WebRenderer,
-};
+use ratzilla::{event::KeyCode, event::MouseButton, event::MouseEventKind, SelectionMode, WebRenderer};
 
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
 use ratzilla::backend::webgl2::WebGl2BackendOptions;
@@ -19,10 +17,10 @@ fn main() -> io::Result<()> {
     let mouse_button = Rc::new(RefCell::new(None::<MouseButton>));
     let mouse_event_kind = Rc::new(RefCell::new(None::<MouseEventKind>));
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
         .webgl2_options(WebGl2BackendOptions::new()
             .enable_console_debug_api()
-            .enable_mouse_selection()
+            .enable_mouse_selection_with_mode(SelectionMode::Block)
         )
         .build_terminal()?;
 
@@ -34,21 +32,32 @@ fn main() -> io::Result<()> {
                 *counter += 1;
             }
         }
-    });
+    })?;
 
     terminal.on_mouse_event({
         let mouse_position_cloned = mouse_position.clone();
         let mouse_button_cloned = mouse_button.clone();
         let mouse_event_kind_cloned = mouse_event_kind.clone();
         move |mouse_event| {
+            let btn = match mouse_event.kind {
+                MouseEventKind::Moved => None,
+                MouseEventKind::ButtonDown(btn) => Some(btn),
+                MouseEventKind::ButtonUp(btn) => Some(btn),
+                _ => return
+            };
+
+
             let mut mouse_position = mouse_position_cloned.borrow_mut();
-            *mouse_position = (mouse_event.x, mouse_event.y);
+            *mouse_position = (mouse_event.col, mouse_event.row);
             let mut mouse_button = mouse_button_cloned.borrow_mut();
-            *mouse_button = Some(mouse_event.button);
+            *mouse_button = btn;
             let mut mouse_event_kind = mouse_event_kind_cloned.borrow_mut();
-            *mouse_event_kind = Some(mouse_event.event);
+            *mouse_event_kind = Some(mouse_event.kind);
         }
-    });
+    })?;
+
+    // Gruvbox bright orange
+    const HOVER_BG: Color = Color::Rgb(254, 128, 25);
 
     terminal.draw_web(move |f| {
         let counter = counter.borrow();
@@ -74,6 +83,13 @@ fn main() -> io::Result<()> {
             ),
             f.area(),
         );
+
+        // Highlight the hovered cell
+        let (col, row) = *mouse_position;
+        let area = f.area();
+        if col < area.width && row < area.height {
+            f.buffer_mut()[(col, row)].set_bg(HOVER_BG);
+        }
     });
 
     Ok(())

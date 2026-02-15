@@ -62,7 +62,7 @@ use ratzilla::{event::KeyCode, DomBackend, WebRenderer};
 fn main() -> io::Result<()> {
     let counter = Rc::new(RefCell::new(0));
     let backend = DomBackend::new()?;
-    let terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend)?;
 
     terminal.on_key_event({
         let counter_cloned = counter.clone();
@@ -72,7 +72,7 @@ fn main() -> io::Result<()> {
                 *counter += 1;
             }
         }
-    });
+    })?;
 
     terminal.draw_web(move |f| {
         let counter = counter.borrow();

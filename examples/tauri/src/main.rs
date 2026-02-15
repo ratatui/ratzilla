@@ -10,7 +10,6 @@ use ratzilla::{
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
 use tachyonfx::{
     fx, CenteredShrink, Duration, Effect, EffectRenderer, EffectTimer, Interpolation, Motion,
-    Shader,
 };
 
 fn main() -> io::Result<()> {

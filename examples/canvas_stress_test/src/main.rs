@@ -20,7 +20,7 @@ use std::{cell::RefCell, rc::Rc};
 
 fn main() -> std::io::Result<()> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::WebGl2)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::WebGl2)
         .webgl2_options(WebGl2BackendOptions::new().measure_performance(true))
         .build_terminal()?;
 
@@ -35,7 +35,7 @@ fn main() -> std::io::Result<()> {
         let current = text_style_key_event.as_ref();
         let next = current.borrow().clone() + 1;
         *current.borrow_mut() = next % WidgetCache::SCREEN_TYPES;
-    });
+    })?;
 
     // Pre-generate widgets for better performance; in particular,
     // this avoids excessive GC pressure in the JS heap.

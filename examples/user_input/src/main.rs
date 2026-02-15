@@ -14,7 +14,7 @@ use ratzilla::ratatui::{
 use ratzilla::{event::KeyCode, WebRenderer};
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
 use ratzilla::backend::dom::DomBackendOptions;
-use ratzilla::backend::webgl2::WebGl2BackendOptions;
+use ratzilla::backend::webgl2::{SelectionMode, WebGl2BackendOptions};
 
 fn main() -> io::Result<()> {
     let dom_options = DomBackendOptions::new(None, CursorShape::SteadyUnderScore);
@@ -22,9 +22,9 @@ fn main() -> io::Result<()> {
     let webgl2_options = WebGl2BackendOptions::new()
         .cursor_shape(CursorShape::SteadyUnderScore)
         .enable_console_debug_api()
-        .enable_mouse_selection();
+        .enable_mouse_selection_with_mode(SelectionMode::default());
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
         .dom_options(dom_options)
         .webgl2_options(webgl2_options)
         .build_terminal()?;
@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
             let mut state = event_state.borrow_mut();
             state.handle_events(key_event);
         }
-    });
+    })?;
 
     terminal.draw_web({
         let render_state = app.clone();

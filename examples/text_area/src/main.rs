@@ -13,7 +13,7 @@ use ratzilla::{
 fn main() -> io::Result<()> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom).build_terminal()?;
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom).build_terminal()?;
 
     let app = Rc::new(RefCell::new(App::new()));
 
@@ -23,7 +23,7 @@ fn main() -> io::Result<()> {
             let mut state = event_state.borrow_mut();
             state.handle_events(key_event);
         }
-    });
+    })?;
 
     terminal.draw_web({
         let render_state = app.clone();

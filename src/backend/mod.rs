@@ -30,6 +30,7 @@
 //! | **Underline**                | ✓          | ✗             | ✓              |
 //! | **Strikethrough**            | ✓          | ✗             | ✓              |
 //! | **Browser Support**          | All        | All           | Modern (2017+) |
+//! | **Mouse Events**             | Full       | Full          | Basic          |
 //!
 //! ¹: The [dynamic font atlas](webgl2::FontAtlasConfig::Dynamic) rasterizes
 //!    glyphs on demand with full Unicode/emoji and font variant support. The
@@ -37,6 +38,22 @@
 //!    compiled into the `.atlas` file.
 //! ²: Unicode is supported, but emoji only render correctly when it spans one cell.
 //!    Most emoji occupy two cells.
+//!
+//! ### Mouse Event Support
+//!
+//! All backends support [`WebEventHandler`] for mouse events with grid coordinate translation.
+//!
+//! | Event Type      | DomBackend | CanvasBackend | WebGl2Backend |
+//! |-----------------|------------|---------------|---------------|
+//! | `Moved`         | ✓          | ✓             | ✓             |
+//! | `ButtonDown`    | ✓          | ✓             | ✓             |
+//! | `ButtonUp`      | ✓          | ✓             | ✓             |
+//! | `SingleClick`   | ✓          | ✓             | ✗             |
+//! | `DoubleClick`   | ✓          | ✓             | ✗             |
+//! | `Entered`       | ✓          | ✓             | ✗             |
+//! | `Exited`        | ✓          | ✓             | ✗             |
+//!
+//! [`WebEventHandler`]: crate::WebEventHandler
 //!
 //! ## Choosing a Backend
 //!
@@ -55,6 +72,8 @@ pub mod webgl2;
 
 /// Color handling.
 mod color;
+/// Event callback management.
+pub(super) mod event_callback;
 /// Backend utilities.
 pub(crate) mod utils;
 
