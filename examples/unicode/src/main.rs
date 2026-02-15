@@ -6,12 +6,21 @@ use ratzilla::ratatui::{
     widgets::{Block, Paragraph},
 };
 
-use ratzilla::WebRenderer;
+use ratzilla::{FontAtlasConfig, SelectionMode, WebRenderer};
 
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
+use ratzilla::backend::webgl2::WebGl2BackendOptions;
 
 fn main() -> io::Result<()> {
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom).build_terminal()?;
+    let webgl2_options = WebGl2BackendOptions::new()
+        .enable_mouse_selection_with_mode(SelectionMode::Block)
+        .enable_console_debug_api()
+        .measure_performance(true)
+        .font_atlas_config(FontAtlasConfig::dynamic(&["Maple Mono NF CN"], 15.0));
+
+    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+        .webgl2_options(webgl2_options)
+        .build_terminal()?;
 
     terminal.draw_web(move |f| {
         f.render_widget(

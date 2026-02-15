@@ -7,15 +7,19 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use ratzilla::{
-    event::{KeyCode, KeyEvent},
-    WebRenderer,
-};
+use ratzilla::{event::{KeyCode, KeyEvent}, SelectionMode, WebRenderer};
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
+use ratzilla::backend::webgl2::WebGl2BackendOptions;
 
 fn main() -> io::Result<()> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+
+    let webgl2_options = WebGl2BackendOptions::new()
+        .enable_mouse_selection_with_mode(SelectionMode::Linear)
+        .measure_performance(true);
+
     let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+        .webgl2_options(webgl2_options)
         .build_terminal()?;
 
     let state = Rc::new(App::default());

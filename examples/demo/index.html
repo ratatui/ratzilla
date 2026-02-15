@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ratzilla Demo</title>
     <style>
+      html {
+        height: 100%;
+      }
       body {
+        height: calc(100% - 40px);
         margin: 20px;
         display: flex;
         flex-direction: column;
@@ -13,6 +17,11 @@
         align-items: center;
         align-content: center;
         background-color: #121212;
+      }
+      canvas {
+        display: block;
+        width: calc(100vw - 40px);
+        height: 100%;
       }
       pre {
         font-family: "Fira Code", monospace;

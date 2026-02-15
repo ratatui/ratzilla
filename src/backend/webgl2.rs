@@ -77,6 +77,8 @@ pub struct WebGl2BackendOptions {
     measure_performance: bool,
     /// Enable console debugging and introspection API.
     console_debug_api: bool,
+    /// Disable automatic canvas CSS sizing (let external CSS control dimensions).
+    disable_auto_css_resize: bool,
 }
 
 impl WebGl2BackendOptions {
@@ -217,6 +219,20 @@ impl WebGl2BackendOptions {
     /// The debug api is accessible from the browser console under `window.__beamterm_debug`.
     pub fn enable_console_debug_api(mut self) -> Self {
         self.console_debug_api = true;
+        self
+    }
+
+    /// Disables automatic canvas CSS sizing for CSS-controlled layouts.
+    ///
+    /// When called, the renderer does not set inline CSS `width` and `height`
+    /// properties on the canvas, allowing external CSS rules (flexbox, grid,
+    /// percentages) to control the canvas display size. The canvas buffer is
+    /// still sized correctly for crisp HiDPI rendering.
+    ///
+    /// Use this when the canvas should fill its container based on CSS layout
+    /// rules rather than having a fixed pixel size.
+    pub fn disable_auto_css_resize(mut self) -> Self {
+        self.disable_auto_css_resize = true;
         self
     }
 }
@@ -390,12 +406,16 @@ impl WebGl2Backend {
         self
     }
 
-    /// Sets the canvas viewport and projection, reconfigures the terminal grid.
+    /// Resizes the terminal to match the current CSS display size of the canvas.
+    ///
+    /// This method reads the canvas's CSS dimensions and updates beamterm's
+    /// internal state, viewport, and grid layout accordingly.
     pub fn resize_canvas(&mut self) -> Result<(), Error> {
-        let size_px = self.beamterm.canvas_size();
+        let width = self.beamterm.canvas().client_width();
+        let height = self.beamterm.canvas().client_height();
 
         // resize the terminal grid and viewport
-        self.beamterm.resize(size_px.0, size_px.1)?;
+        self.beamterm.resize(width, height)?;
 
         // clear any hyperlink cells; we'll get them in the next draw call
         if let Some(hyperlink_cells) = &mut self.hyperlink_cells {
@@ -418,17 +438,14 @@ impl WebGl2Backend {
 
     /// Checks if the canvas size matches the display size and resizes it if necessary.
     fn check_canvas_resize(&mut self) -> Result<(), Error> {
-        let canvas = self.beamterm.canvas();
-        let display_width = canvas.client_width() as u32;
-        let display_height = canvas.client_height() as u32;
+        // Compare CSS display size against beamterm's stored logical size.
+        // Both are in CSS/logical pixels, so DPR scaling is handled correctly
+        // by beamterm internally (buffer = logical × DPR).
+        let display_width = self.beamterm.canvas().client_width();
+        let display_height = self.beamterm.canvas().client_height();
+        let (stored_width, stored_height) = self.beamterm.canvas_size();
 
-        let buffer_width = canvas.width();
-        let buffer_height = canvas.height();
-
-        if display_width != buffer_width || display_height != buffer_height {
-            canvas.set_width(display_width);
-            canvas.set_height(display_height);
-
+        if display_width != stored_width || display_height != stored_height {
             self.resize_canvas()?;
         }
 
@@ -672,6 +689,8 @@ impl WebGl2Backend {
         } else {
             beamterm
         };
+
+        let beamterm = beamterm.auto_resize_canvas_css(!options.disable_auto_css_resize);
 
         Ok(beamterm.build()?)
     }
