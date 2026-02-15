@@ -373,7 +373,7 @@ impl WebGl2Backend {
             (None, None)
         };
 
-        Ok(Self {
+        let mut backend = Self {
             beamterm,
             cursor_position: None,
             options,
@@ -384,7 +384,12 @@ impl WebGl2Backend {
             hyperlink_state,
             _user_mouse_handler: None,
             _user_key_handler: None,
-        })
+        };
+
+        // Convert handler metrics from physical pixels to CSS pixels
+        backend.update_mouse_handler_metrics();
+
+        Ok(backend)
     }
 
     /// Returns the options objects used to create this backend.
@@ -417,7 +422,31 @@ impl WebGl2Backend {
         // Reset hyperlink cursor state when canvas is resized
         self.cursor_over_hyperlink = false;
 
+        self.update_mouse_handler_metrics();
+
         Ok(())
+    }
+
+    /// Updates metrics on externally-managed mouse handlers after resize or DPR changes.
+    ///
+    /// Beamterm's `Terminal::resize()` only updates its own internal mouse handler.
+    /// The user and hyperlink handlers created by ratzilla need their metrics updated
+    /// separately.
+    fn update_mouse_handler_metrics(&mut self) {
+        let (cols, rows) = self.beamterm.terminal_size();
+        let (phys_w, phys_h) = self.beamterm.cell_size();
+        let dpr = window()
+            .map(|w| w.device_pixel_ratio() as f32)
+            .unwrap_or(1.0);
+        let cell_width = phys_w as f32 / dpr;
+        let cell_height = phys_h as f32 / dpr;
+
+        if let Some(handler) = &mut self._user_mouse_handler {
+            handler.update_metrics(cols, rows, cell_width, cell_height);
+        }
+        if let Some(handler) = &mut self._hyperlink_mouse_handler {
+            handler.update_metrics(cols, rows, cell_width, cell_height);
+        }
     }
 
     /// Checks if the canvas size matches the display size and resizes it if necessary.
@@ -878,6 +907,10 @@ impl WebEventHandler for WebGl2Backend {
         )?;
 
         self._user_mouse_handler = Some(mouse_handler);
+
+        // TerminalMouseHandler is constructed with physical pixel metrics;
+        // convert to CSS pixels so coordinate translation is correct on HiDPI.
+        self.update_mouse_handler_metrics();
 
         Ok(())
     }
