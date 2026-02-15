@@ -100,6 +100,7 @@ where
 /// Backend-specific event handling with lifecycle management.
 ///
 /// This trait provides proper event handling for terminal backends, including:
+///
 /// - Coordinate translation from pixels to terminal grid positions
 /// - Automatic cleanup of event listeners when replaced or dropped
 /// - Extended mouse event support (enter/leave, click/dblclick)
