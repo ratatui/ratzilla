@@ -134,7 +134,7 @@ pub(super) const MOUSE_EVENT_TYPES: &[&str] = &[
 ///
 /// This function calculates the grid position (col, row) from raw pixel
 /// coordinates, taking into account element positioning and optional offsets.
-pub(super) fn mouse_to_grid_coords(
+fn mouse_to_grid_coords(
     event: &web_sys::MouseEvent,
     element: &Element,
     config: &MouseConfig,
@@ -172,7 +172,7 @@ pub(super) fn mouse_to_grid_coords(
 }
 
 /// Converts a web_sys::MouseEvent type string to a MouseEventKind.
-pub(super) fn event_type_to_kind(event_type: &str, button: MouseButton) -> MouseEventKind {
+fn event_type_to_kind(event_type: &str, button: MouseButton) -> MouseEventKind {
     match event_type {
         "mousemove" => MouseEventKind::Moved,
         "mousedown" => MouseEventKind::ButtonDown(button),

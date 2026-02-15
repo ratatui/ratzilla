@@ -870,7 +870,7 @@ impl WebEventHandler for WebGl2Backend {
             canvas,
             grid,
             move |event: TerminalMouseEvent, _grid: &beamterm_renderer::TerminalGrid| {
-                let mouse_event = beamterm_event_to_mouse_event(&event);
+                let mouse_event = MouseEvent::from(&event);
                 if let Ok(mut cb) = callback_clone.try_borrow_mut() {
                     cb(mouse_event);
                 }
@@ -915,33 +915,34 @@ impl WebEventHandler for WebGl2Backend {
     }
 }
 
-/// Converts a beamterm `TerminalMouseEvent` to our `MouseEvent` type.
-fn beamterm_event_to_mouse_event(event: &TerminalMouseEvent) -> MouseEvent {
-    use crate::event::{MouseButton, MouseEventKind};
+impl From<&TerminalMouseEvent> for MouseEvent {
+    fn from(event: &TerminalMouseEvent) -> Self {
+        use crate::event::{MouseButton, MouseEventKind};
 
-    let button = match event.button() {
-        0 => MouseButton::Left,
-        1 => MouseButton::Middle,
-        2 => MouseButton::Right,
-        3 => MouseButton::Back,
-        4 => MouseButton::Forward,
-        _ => MouseButton::Unidentified,
-    };
+        let button = match event.button() {
+            0 => MouseButton::Left,
+            1 => MouseButton::Middle,
+            2 => MouseButton::Right,
+            3 => MouseButton::Back,
+            4 => MouseButton::Forward,
+            _ => MouseButton::Unidentified,
+        };
 
-    // beamterm only provides MouseMove, MouseDown, and MouseUp events
-    let kind = match event.event_type {
-        MouseEventType::MouseMove => MouseEventKind::Moved,
-        MouseEventType::MouseDown => MouseEventKind::ButtonDown(button),
-        MouseEventType::MouseUp => MouseEventKind::ButtonUp(button),
-    };
+        // beamterm only provides MouseMove, MouseDown, and MouseUp events
+        let kind = match event.event_type {
+            MouseEventType::MouseMove => MouseEventKind::Moved,
+            MouseEventType::MouseDown => MouseEventKind::ButtonDown(button),
+            MouseEventType::MouseUp => MouseEventKind::ButtonUp(button),
+        };
 
-    MouseEvent {
-        kind,
-        col: event.col,
-        row: event.row,
-        ctrl: event.ctrl_key(),
-        alt: event.alt_key(),
-        shift: event.shift_key(),
+        MouseEvent {
+            kind,
+            col: event.col,
+            row: event.row,
+            ctrl: event.ctrl_key(),
+            alt: event.alt_key(),
+            shift: event.shift_key(),
+        }
     }
 }
 
