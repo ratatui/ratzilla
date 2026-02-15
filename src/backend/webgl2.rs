@@ -827,15 +827,15 @@ impl std::fmt::Debug for HyperlinkCallback {
 /// which provides native grid coordinate translation. However, beamterm only supports
 /// a subset of mouse events:
 ///
-/// | Supported | Event Type |
-/// |-----------|------------|
-/// | ✓ | [`MouseEventKind::Moved`] |
-/// | ✓ | [`MouseEventKind::ButtonDown`] |
-/// | ✓ | [`MouseEventKind::ButtonUp`] |
-/// | ✗ | [`MouseEventKind::SingleClick`] |
-/// | ✗ | [`MouseEventKind::DoubleClick`] |
-/// | ✗ | [`MouseEventKind::Entered`] |
-/// | ✗ | [`MouseEventKind::Exited`] |
+/// | Supported | Event Type                      |
+/// | --------- | ------------------------------- |
+/// | ✓         | [`MouseEventKind::Moved`]       |
+/// | ✓         | [`MouseEventKind::ButtonDown`]  |
+/// | ✓         | [`MouseEventKind::ButtonUp`]    |
+/// | ✗         | [`MouseEventKind::SingleClick`] |
+/// | ✗         | [`MouseEventKind::DoubleClick`] |
+/// | ✗         | [`MouseEventKind::Entered`]     |
+/// | ✗         | [`MouseEventKind::Exited`]      |
 ///
 /// For full mouse event support, consider using [`CanvasBackend`] or [`DomBackend`].
 ///
