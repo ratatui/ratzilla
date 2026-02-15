@@ -149,7 +149,9 @@ pub trait WebEventHandler {
     /// Calling this method again will automatically clean up the previous
     /// event listeners before setting up new ones.
     ///
-    /// **Note**: Some backends (e.g., [`WebGl2Backend`]) do not support key events
+    /// # Note
+    ///
+    ///  Some backends (e.g., [`WebGl2Backend`]) do not support key events
     /// and will silently succeed without registering any handlers.
     ///
     /// # Errors
