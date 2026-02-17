@@ -1,12 +1,12 @@
 use crate::{
     backend::{color::to_rgb, utils::*},
     error::Error,
-    widgets::hyperlink::HYPERLINK_MODIFIER,
     CursorShape,
 };
 pub use beamterm_renderer::SelectionMode;
-use beamterm_renderer::{mouse::*, select, CellData, GlyphEffect, Terminal as Beamterm, Terminal};
-use bitvec::prelude::BitVec;
+use beamterm_renderer::{
+    mouse::*, CellData, CursorPosition, GlyphEffect, Terminal as Beamterm, Terminal,
+};
 use compact_str::CompactString;
 use ratatui::{
     backend::{ClearType, WindowSize},
@@ -46,6 +46,14 @@ impl FontAtlasConfig {
             font_size,
         )
     }
+}
+
+/// Pending hyperlink mouse events, communicated from the mouse handler to
+/// [`WebGl2Backend::process_hyperlink_events`].
+#[derive(Clone, Copy, Default)]
+struct PendingHyperlinkEvent {
+    hover: Option<(u16, u16)>,
+    click: Option<(u16, u16)>,
 }
 
 // Labels used by the Performance API
@@ -304,14 +312,14 @@ pub struct WebGl2Backend {
     cursor_position: Option<Position>,
     /// Performance measurement.
     performance: Option<web_sys::Performance>,
-    /// Hyperlink tracking.
-    hyperlink_cells: Option<Rc<RefCell<BitVec>>>,
     /// Mouse handler for hyperlink clicks.
     _hyperlink_mouse_handler: Option<TerminalMouseHandler>,
-    /// Current cursor state over hyperlinks (shared with mouse handler).
-    cursor_over_hyperlink: Option<Rc<RefCell<bool>>>,
+    /// Whether cursor is currently over a hyperlink.
+    cursor_over_hyperlink: bool,
     /// Hyperlink click callback.
-    _hyperlink_callback: Option<HyperlinkCallback>,
+    hyperlink_callback: Option<HyperlinkCallback>,
+    /// Shared state for deferred hyperlink processing in [`WebGl2Backend::flush`].
+    hyperlink_state: Option<Rc<std::cell::Cell<PendingHyperlinkEvent>>>,
 }
 
 impl WebGl2Backend {
@@ -342,50 +350,27 @@ impl WebGl2Backend {
 
         let beamterm = Self::init_beamterm(&mut options, &parent)?;
 
-        let hyperlink_cells = if options.hyperlink_callback.is_some() {
-            let indices = BitVec::repeat(false, beamterm.cell_count());
-            Some(Rc::new(RefCell::new(indices)))
-        } else {
-            None
-        };
-
         // Extract hyperlink callback from options
         let hyperlink_callback = options.hyperlink_callback.take();
 
-        // Initialize cursor state tracking if hyperlinks are enabled
-        let cursor_over_hyperlink = if hyperlink_callback.is_some() {
-            Some(Rc::new(RefCell::new(false)))
+        // Set up hyperlink mouse handler and shared state if callback is provided
+        let (hyperlink_mouse_handler, hyperlink_state) = if hyperlink_callback.is_some() {
+            let state = Rc::new(std::cell::Cell::new(PendingHyperlinkEvent::default()));
+            let handler = Self::create_hyperlink_mouse_handler(&beamterm, state.clone())?;
+            (Some(handler), Some(state))
         } else {
-            None
-        };
-
-        // Set up hyperlink mouse handler if callback is provided
-        let hyperlink_mouse_handler = if let Some(ref callback) = hyperlink_callback {
-            let hyperlink_cells = hyperlink_cells
-                .clone()
-                .expect("known to exist at this point");
-            let cursor_state = cursor_over_hyperlink
-                .clone()
-                .expect("known to exist at this point");
-            Some(Self::create_hyperlink_mouse_handler(
-                &beamterm,
-                hyperlink_cells.clone(),
-                callback.callback.clone(),
-                cursor_state,
-            )?)
-        } else {
-            None
+            (None, None)
         };
 
         Ok(Self {
             beamterm,
             cursor_position: None,
             options,
-            hyperlink_cells,
             _hyperlink_mouse_handler: hyperlink_mouse_handler,
             performance,
-            cursor_over_hyperlink,
-            _hyperlink_callback: hyperlink_callback,
+            cursor_over_hyperlink: false,
+            hyperlink_callback,
+            hyperlink_state,
         })
     }
 
@@ -416,21 +401,8 @@ impl WebGl2Backend {
         // resize the terminal grid and viewport
         self.beamterm.resize(width, height)?;
 
-        // clear any hyperlink cells; we'll get them in the next draw call
-        if let Some(hyperlink_cells) = &mut self.hyperlink_cells {
-            let cell_count = self.beamterm.cell_count();
-
-            let mut hyperlink_cells = hyperlink_cells.borrow_mut();
-            hyperlink_cells.clear();
-            hyperlink_cells.resize(cell_count, false);
-        }
-
-        // Reset cursor state when canvas is resized
-        if let Some(cursor_state) = &self.cursor_over_hyperlink {
-            if let Ok(mut state) = cursor_state.try_borrow_mut() {
-                *state = false;
-            }
-        }
+        // Reset hyperlink cursor state when canvas is resized
+        self.cursor_over_hyperlink = false;
 
         Ok(())
     }
@@ -459,29 +431,10 @@ impl WebGl2Backend {
         // If enabled, measures the time taken to synchronize the terminal buffer.
         self.measure_begin(SYNC_TERMINAL_BUFFER_MARK);
 
-        // If hyperlink support is enabled, we need to track which cells are hyperlinks,
-        // before passing the content to the beamterm renderer.
-        if let Some(hyperlink_cells) = self.hyperlink_cells.as_mut() {
-            let w = self.beamterm.terminal_size().0 as usize;
-
-            let mut hyperlink_cells = hyperlink_cells.borrow_mut();
-
-            // Mark any cells that have the hyperlink modifier set (don't blink!).
-            // At this stage, we don't care about the actual cell content,
-            // as we can extract it on demand.
-            let cells = content.inspect(|(x, y, c)| {
-                let idx = *y as usize * w + *x as usize;
-                let is_hyperlink = c.modifier.contains(HYPERLINK_MODIFIER);
-                hyperlink_cells.set(idx, is_hyperlink);
-            });
-            let cells = cells.map(|(x, y, cell)| (x, y, cell_data(cell)));
-
-            self.beamterm.update_cells_by_position(cells)
-        } else {
-            let cells = content.map(|(x, y, cell)| (x, y, cell_data(cell)));
-            self.beamterm.update_cells_by_position(cells)
-        }
-        .map_err(Error::from)?;
+        let cells = content.map(|(x, y, cell)| (x, y, cell_data(cell)));
+        self.beamterm
+            .update_cells_by_position(cells)
+            .map_err(Error::from)?;
 
         self.measure_end(SYNC_TERMINAL_BUFFER_MARK);
 
@@ -571,81 +524,72 @@ impl WebGl2Backend {
         }
     }
 
-    /// Creates a mouse handler specifically for hyperlink clicks and hover effects.
+    /// Creates a mouse handler that records hyperlink-relevant mouse events
+    /// for deferred processing in [`WebGl2Backend::process_hyperlink_events`].
     fn create_hyperlink_mouse_handler(
         beamterm: &Beamterm,
-        hyperlink_cells: Rc<RefCell<BitVec>>,
-        callback: Rc<RefCell<dyn FnMut(&str)>>,
-        cursor_state: Rc<RefCell<bool>>,
+        hyperlink_state: Rc<std::cell::Cell<PendingHyperlinkEvent>>,
     ) -> Result<TerminalMouseHandler, Error> {
         let grid = beamterm.grid();
         let canvas = beamterm.canvas();
-        let hyperlink_cells_clone = hyperlink_cells.clone();
-        let hyperlink_cells_move = hyperlink_cells.clone();
-        let canvas_clone = canvas.clone();
-        let cursor_state_clone = cursor_state.clone();
 
         let mouse_handler = TerminalMouseHandler::new(
             canvas,
             grid,
-            move |event: TerminalMouseEvent, grid: &beamterm_renderer::TerminalGrid| {
+            move |event: TerminalMouseEvent, _grid: &beamterm_renderer::TerminalGrid| {
+                let mut state = hyperlink_state.get();
                 match event.event_type {
-                    MouseEventType::MouseUp => {
-                        // Handle hyperlink clicks (left mouse button only)
-                        if event.button() == 0 {
-                            if let Some(url) = extract_hyperlink_url(
-                                hyperlink_cells_clone.clone(),
-                                grid,
-                                event.col,
-                                event.row,
-                            ) {
-                                if let Ok(mut cb) = callback.try_borrow_mut() {
-                                    cb(&url);
-                                }
-                            }
-                        }
+                    MouseEventType::MouseUp if event.button() == 0 => {
+                        state.click = Some((event.col, event.row));
                     }
                     MouseEventType::MouseMove => {
-                        // Handle cursor style changes on hover
-                        let is_over_hyperlink = Self::is_over_hyperlink(
-                            hyperlink_cells_move.clone(),
-                            grid,
-                            event.col,
-                            event.row,
-                        );
-
-                        // Only update cursor style if state has changed
-                        if let Ok(mut current_state) = cursor_state_clone.try_borrow_mut() {
-                            if *current_state != is_over_hyperlink {
-                                *current_state = is_over_hyperlink;
-                                Self::update_canvas_cursor_style(&canvas_clone, is_over_hyperlink);
-                            }
-                        }
+                        state.hover = Some((event.col, event.row));
                     }
-                    _ => {}
+                    _ => return,
                 }
+                hyperlink_state.set(state);
             },
         )?;
 
         Ok(mouse_handler)
     }
 
-    /// Checks if the given coordinates are over a hyperlink.
-    fn is_over_hyperlink(
-        hyperlink_cells: Rc<RefCell<BitVec>>,
-        grid: &beamterm_renderer::TerminalGrid,
-        col: u16,
-        row: u16,
-    ) -> bool {
-        let (cols, _) = grid.terminal_size();
-        let row_start_idx = row as usize * cols as usize;
-        let cell_idx = row_start_idx + col as usize;
+    /// Processes pending hyperlink events using [`Beamterm::find_url_at`].
+    ///
+    /// Called during [`WebGl2Backend::flush`] where `self.beamterm` is accessible.
+    fn process_hyperlink_events(&mut self) {
+        let state = match self.hyperlink_state.clone() {
+            Some(state) => state,
+            None => return,
+        };
 
-        hyperlink_cells
-            .borrow()
-            .get(cell_idx)
-            .map(|b| *b)
-            .unwrap_or(false)
+        let mut pending = state.get();
+
+        // Process pending click
+        if let Some((col, row)) = pending.click {
+            pending.click = None;
+            if let Some(url_match) = self.beamterm.find_url_at(CursorPosition::new(col, row)) {
+                if let Some(ref callback) = self.hyperlink_callback {
+                    if let Ok(mut cb) = callback.callback.try_borrow_mut() {
+                        cb(&url_match.url);
+                    }
+                }
+            }
+        }
+
+        // Update cursor style on hover
+        if let Some((col, row)) = pending.hover {
+            let is_over = self
+                .beamterm
+                .find_url_at(CursorPosition::new(col, row))
+                .is_some();
+            if self.cursor_over_hyperlink != is_over {
+                self.cursor_over_hyperlink = is_over;
+                Self::update_canvas_cursor_style(&self.beamterm.canvas(), is_over);
+            }
+        }
+
+        state.set(pending);
     }
 
     /// Initializes the beamterm renderer with the given options and parent element.
@@ -717,6 +661,7 @@ impl Backend for WebGl2Backend {
     /// This function is called after the [`WebGl2Backend::draw`] function to
     /// actually render the content to the screen.
     fn flush(&mut self) -> IoResult<()> {
+        self.process_hyperlink_events();
         self.check_canvas_resize()?;
 
         self.measure_begin(WEBGL_RENDER_MARK);
@@ -747,10 +692,6 @@ impl Backend for WebGl2Backend {
             .take(self.beamterm.cell_count());
 
         self.beamterm.update_cells(cells).map_err(Error::from)?;
-
-        if let Some(hyperlink_cells) = &mut self.hyperlink_cells {
-            hyperlink_cells.borrow_mut().clear();
-        }
 
         Ok(())
     }
@@ -788,86 +729,6 @@ impl Backend for WebGl2Backend {
             _ => Err(IoError::other("unimplemented")),
         }
     }
-}
-
-/// Extracts text from beamterm grid using `[get_text(CellQuery)`].
-fn extract_text_from_grid(
-    grid: &beamterm_renderer::TerminalGrid,
-    start_col: u16,
-    end_col: u16,
-    row: u16,
-) -> Option<String> {
-    // Create a selection query for the hyperlink range
-    let query = select(SelectionMode::Block)
-        .start((start_col, row))
-        .end((end_col, row))
-        .trim_trailing_whitespace(true);
-
-    let text = grid.get_text(query);
-    if text.is_empty() {
-        None
-    } else {
-        Some(text.to_string())
-    }
-}
-
-/// Extracts hyperlink URL from grid coordinates.
-fn extract_hyperlink_url(
-    hyperlink_cells: Rc<RefCell<BitVec>>,
-    grid: &beamterm_renderer::TerminalGrid,
-    start_col: u16,
-    row: u16,
-) -> Option<String> {
-    let hyperlink_cells = hyperlink_cells;
-    let (cols, _) = grid.terminal_size();
-
-    // Find hyperlink boundaries
-    let (link_start, link_end) =
-        find_hyperlink_bounds(&hyperlink_cells.borrow(), start_col, row, cols)?;
-
-    // Extract text using beamterm's grid
-    extract_text_from_grid(grid, link_start, link_end, row)
-}
-
-/// Finds the start and end boundaries of a hyperlink.
-fn find_hyperlink_bounds(
-    hyperlink_cells: &BitVec,
-    start_col: u16,
-    row: u16,
-    cols: u16,
-) -> Option<(u16, u16)> {
-    let row_start_idx = row as usize * cols as usize;
-
-    // Ensure clicked cell is a hyperlink
-    if !hyperlink_cells
-        .get(row_start_idx + start_col as usize)
-        .map(|b| *b)
-        .unwrap_or(false)
-    {
-        return None;
-    }
-
-    // Find start of hyperlink (scan left)
-    let mut link_start = start_col;
-    while link_start > 0 {
-        let idx = row_start_idx + (link_start - 1) as usize;
-        if !hyperlink_cells.get(idx).map(|b| *b).unwrap_or(false) {
-            break;
-        }
-        link_start -= 1;
-    }
-
-    // Find end of hyperlink (scan right)
-    let mut link_end = start_col;
-    while link_end < cols - 1 {
-        let idx = row_start_idx + (link_end + 1) as usize;
-        if !hyperlink_cells.get(idx).map(|b| *b).unwrap_or(false) {
-            break;
-        }
-        link_end += 1;
-    }
-
-    Some((link_start, link_end))
 }
 
 /// Resolves foreground and background colors for a [`Cell`].
