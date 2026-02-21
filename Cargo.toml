@@ -1,6 +1,6 @@
 [package]
 name = "ratzilla"
-version = "0.3.0"
+version = "0.3.1"
 description = "Build terminal-themed web applications with Ratatui and WebAssembly"
 authors = ["Orhun Parmaksız <orhunparmaksiz@gmail.com>"]
 license = "MIT OR Apache-2.0"
