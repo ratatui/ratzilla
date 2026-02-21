@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Position, Size},
     prelude::{backend::ClearType, Backend},
 };
-use web_sys::{window, Document, Element, Window};
+use web_sys::{window, Document, Element};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -81,8 +81,6 @@ pub struct DomBackend {
     grid: Element,
     /// The parent of the grid element.
     grid_parent: Element,
-    /// Window.
-    window: Window,
     /// Document.
     document: Document,
     /// Options.
@@ -96,7 +94,7 @@ pub struct DomBackend {
     /// Measured cell dimensions in pixels (width, height).
     cell_size: (f64, f64),
     /// Resize event callback handler.
-    resize_callback: EventCallback<web_sys::Event>,
+    _resize_callback: EventCallback<web_sys::Event>,
     /// Mouse event callback handler.
     mouse_callback: Option<DomMouseCallbackState>,
     /// Key event callback handler.
@@ -166,13 +164,12 @@ impl DomBackend {
             grid: document.create_element("div")?,
             grid_parent,
             options,
-            window,
             document,
             cursor_position: None,
             last_cursor_position: None,
             size,
             cell_size,
-            resize_callback,
+            _resize_callback: resize_callback,
             mouse_callback: None,
             key_callback: None,
         };
