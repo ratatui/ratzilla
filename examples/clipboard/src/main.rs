@@ -4,7 +4,7 @@ use ratatui::{
     layout::Alignment,
     style::{Color, Stylize},
     widgets::{Block, BorderType, Paragraph},
-    Frame, Terminal,
+    Frame,
 };
 
 use ratzilla::{event::{KeyCode, KeyEvent}, SelectionMode, WebRenderer};
@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
         .enable_mouse_selection_with_mode(SelectionMode::Linear)
         .measure_performance(true);
 
-    let terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
+    let mut terminal = MultiBackendBuilder::with_fallback(BackendType::Dom)
         .webgl2_options(webgl2_options)
         .build_terminal()?;
 
@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
         wasm_bindgen_futures::spawn_local(
             async move { event_state.handle_events(key_event).await },
         );
-    });
+    })?;
 
     let render_state = Rc::clone(&state);
     terminal.draw_web(move |frame| {

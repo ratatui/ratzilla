@@ -1,6 +1,12 @@
 use crate::{
-    backend::{color::to_rgb, utils::*},
+    backend::{
+        color::to_rgb,
+        event_callback::{EventCallback, KEY_EVENT_TYPES},
+        utils::*,
+    },
     error::Error,
+    event::{KeyEvent, MouseEvent},
+    render::WebEventHandler,
     CursorShape,
 };
 pub use beamterm_renderer::SelectionMode;
@@ -321,6 +327,10 @@ pub struct WebGl2Backend {
     hyperlink_callback: Option<HyperlinkCallback>,
     /// Shared state for deferred hyperlink processing in [`WebGl2Backend::flush`].
     hyperlink_state: Option<Rc<std::cell::Cell<PendingHyperlinkEvent>>>,
+    /// User-provided mouse event handler.
+    _user_mouse_handler: Option<TerminalMouseHandler>,
+    /// User-provided key event handler.
+    _user_key_handler: Option<EventCallback<web_sys::KeyboardEvent>>,
 }
 
 impl WebGl2Backend {
@@ -363,7 +373,7 @@ impl WebGl2Backend {
             (None, None)
         };
 
-        Ok(Self {
+        let mut backend = Self {
             beamterm,
             cursor_position: None,
             options,
@@ -372,7 +382,14 @@ impl WebGl2Backend {
             cursor_over_hyperlink: false,
             hyperlink_callback,
             hyperlink_state,
-        })
+            _user_mouse_handler: None,
+            _user_key_handler: None,
+        };
+
+        // Convert handler metrics from physical pixels to CSS pixels
+        backend.update_mouse_handler_metrics();
+
+        Ok(backend)
     }
 
     /// Returns the options objects used to create this backend.
@@ -405,7 +422,31 @@ impl WebGl2Backend {
         // Reset hyperlink cursor state when canvas is resized
         self.cursor_over_hyperlink = false;
 
+        self.update_mouse_handler_metrics();
+
         Ok(())
+    }
+
+    /// Updates metrics on externally-managed mouse handlers after resize or DPR changes.
+    ///
+    /// Beamterm's `Terminal::resize()` only updates its own internal mouse handler.
+    /// The user and hyperlink handlers created by ratzilla need their metrics updated
+    /// separately.
+    fn update_mouse_handler_metrics(&mut self) {
+        let (cols, rows) = self.beamterm.terminal_size();
+        let (phys_w, phys_h) = self.beamterm.cell_size();
+        let dpr = window()
+            .map(|w| w.device_pixel_ratio() as f32)
+            .unwrap_or(1.0);
+        let cell_width = phys_w as f32 / dpr;
+        let cell_height = phys_h as f32 / dpr;
+
+        if let Some(handler) = &mut self._user_mouse_handler {
+            handler.update_metrics(cols, rows, cell_width, cell_height);
+        }
+        if let Some(handler) = &mut self._hyperlink_mouse_handler {
+            handler.update_metrics(cols, rows, cell_width, cell_height);
+        }
     }
 
     /// Checks if the canvas size matches the display size and resizes it if necessary.
@@ -806,6 +847,125 @@ impl std::fmt::Debug for HyperlinkCallback {
         f.debug_struct("CallbackWrapper")
             .field("callback", &"<callback>")
             .finish()
+    }
+}
+
+/// Event handling for [`WebGl2Backend`].
+///
+/// This implementation delegates mouse events to beamterm's [`TerminalMouseHandler`],
+/// which provides native grid coordinate translation.
+///
+/// | Supported | Event Type                      |
+/// | --------- | ------------------------------- |
+/// | ✓         | [`MouseEventKind::Moved`]       |
+/// | ✓         | [`MouseEventKind::ButtonDown`]  |
+/// | ✓         | [`MouseEventKind::ButtonUp`]    |
+/// | ✓         | [`MouseEventKind::SingleClick`] |
+/// | ✗         | [`MouseEventKind::DoubleClick`] |
+/// | ✓         | [`MouseEventKind::Entered`]     |
+/// | ✓         | [`MouseEventKind::Exited`]      |
+///
+/// Keyboard events are supported by making the canvas focusable with `tabindex="0"`.
+///
+/// [`MouseEventKind::Moved`]: crate::event::MouseEventKind::Moved
+/// [`MouseEventKind::ButtonDown`]: crate::event::MouseEventKind::ButtonDown
+/// [`MouseEventKind::ButtonUp`]: crate::event::MouseEventKind::ButtonUp
+/// [`MouseEventKind::SingleClick`]: crate::event::MouseEventKind::SingleClick
+/// [`MouseEventKind::DoubleClick`]: crate::event::MouseEventKind::DoubleClick
+/// [`MouseEventKind::Entered`]: crate::event::MouseEventKind::Entered
+/// [`MouseEventKind::Exited`]: crate::event::MouseEventKind::Exited
+impl WebEventHandler for WebGl2Backend {
+    fn on_mouse_event<F>(&mut self, callback: F) -> Result<(), Error>
+    where
+        F: FnMut(MouseEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_mouse_events();
+
+        let grid = self.beamterm.grid();
+        let canvas = self.beamterm.canvas();
+
+        // Wrap the callback in Rc<RefCell> for sharing
+        let callback = Rc::new(RefCell::new(callback));
+        let callback_clone = callback.clone();
+
+        // Create a TerminalMouseHandler that delegates to our callback
+        let mouse_handler = TerminalMouseHandler::new(
+            canvas,
+            grid,
+            move |event: TerminalMouseEvent, _grid: &beamterm_renderer::TerminalGrid| {
+                let mouse_event = MouseEvent::from(&event);
+                if let Ok(mut cb) = callback_clone.try_borrow_mut() {
+                    cb(mouse_event);
+                }
+            },
+        )?;
+
+        self._user_mouse_handler = Some(mouse_handler);
+
+        // TerminalMouseHandler is constructed with physical pixel metrics;
+        // convert to CSS pixels so coordinate translation is correct on HiDPI.
+        self.update_mouse_handler_metrics();
+
+        Ok(())
+    }
+
+    fn clear_mouse_events(&mut self) {
+        self._user_mouse_handler = None;
+    }
+
+    fn on_key_event<F>(&mut self, mut callback: F) -> Result<(), Error>
+    where
+        F: FnMut(KeyEvent) + 'static,
+    {
+        // Clear any existing handlers first
+        self.clear_key_events();
+
+        let canvas = self.beamterm.canvas();
+        let element: web_sys::Element = canvas.clone().into();
+
+        // Make the canvas focusable so it can receive key events
+        canvas.set_attribute("tabindex", "0").map_err(Error::from)?;
+
+        self._user_key_handler = Some(EventCallback::new(
+            element,
+            KEY_EVENT_TYPES,
+            move |event: web_sys::KeyboardEvent| {
+                callback(event.into());
+            },
+        )?);
+
+        Ok(())
+    }
+
+    fn clear_key_events(&mut self) {
+        self._user_key_handler = None;
+    }
+}
+
+impl From<&TerminalMouseEvent> for MouseEvent {
+    fn from(event: &TerminalMouseEvent) -> Self {
+        use crate::event::{MouseButton, MouseEventKind};
+
+        let button = MouseButton::from(event.button());
+
+        let kind = match event.event_type {
+            MouseEventType::MouseMove => MouseEventKind::Moved,
+            MouseEventType::MouseDown => MouseEventKind::ButtonDown(button),
+            MouseEventType::MouseUp => MouseEventKind::ButtonUp(button),
+            MouseEventType::Click => MouseEventKind::SingleClick(button),
+            MouseEventType::MouseEnter => MouseEventKind::Entered,
+            MouseEventType::MouseLeave => MouseEventKind::Exited,
+        };
+
+        MouseEvent {
+            kind,
+            col: event.col,
+            row: event.row,
+            ctrl: event.ctrl_key(),
+            alt: event.alt_key(),
+            shift: event.shift_key(),
+        }
     }
 }
 
