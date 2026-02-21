@@ -853,25 +853,20 @@ impl std::fmt::Debug for HyperlinkCallback {
 /// Event handling for [`WebGl2Backend`].
 ///
 /// This implementation delegates mouse events to beamterm's [`TerminalMouseHandler`],
-/// which provides native grid coordinate translation. However, beamterm only supports
-/// a subset of mouse events:
+/// which provides native grid coordinate translation.
 ///
 /// | Supported | Event Type                      |
 /// | --------- | ------------------------------- |
 /// | ✓         | [`MouseEventKind::Moved`]       |
 /// | ✓         | [`MouseEventKind::ButtonDown`]  |
 /// | ✓         | [`MouseEventKind::ButtonUp`]    |
-/// | ✗         | [`MouseEventKind::SingleClick`] |
+/// | ✓         | [`MouseEventKind::SingleClick`] |
 /// | ✗         | [`MouseEventKind::DoubleClick`] |
-/// | ✗         | [`MouseEventKind::Entered`]     |
-/// | ✗         | [`MouseEventKind::Exited`]      |
-///
-/// For full mouse event support, consider using [`CanvasBackend`] or [`DomBackend`].
+/// | ✓         | [`MouseEventKind::Entered`]     |
+/// | ✓         | [`MouseEventKind::Exited`]      |
 ///
 /// Keyboard events are supported by making the canvas focusable with `tabindex="0"`.
 ///
-/// [`CanvasBackend`]: crate::CanvasBackend
-/// [`DomBackend`]: crate::DomBackend
 /// [`MouseEventKind::Moved`]: crate::event::MouseEventKind::Moved
 /// [`MouseEventKind::ButtonDown`]: crate::event::MouseEventKind::ButtonDown
 /// [`MouseEventKind::ButtonUp`]: crate::event::MouseEventKind::ButtonUp
@@ -952,20 +947,15 @@ impl From<&TerminalMouseEvent> for MouseEvent {
     fn from(event: &TerminalMouseEvent) -> Self {
         use crate::event::{MouseButton, MouseEventKind};
 
-        let button = match event.button() {
-            0 => MouseButton::Left,
-            1 => MouseButton::Middle,
-            2 => MouseButton::Right,
-            3 => MouseButton::Back,
-            4 => MouseButton::Forward,
-            _ => MouseButton::Unidentified,
-        };
+        let button = MouseButton::from(event.button());
 
-        // beamterm only provides MouseMove, MouseDown, and MouseUp events
         let kind = match event.event_type {
             MouseEventType::MouseMove => MouseEventKind::Moved,
             MouseEventType::MouseDown => MouseEventKind::ButtonDown(button),
             MouseEventType::MouseUp => MouseEventKind::ButtonUp(button),
+            MouseEventType::Click => MouseEventKind::SingleClick(button),
+            MouseEventType::MouseEnter => MouseEventKind::Entered,
+            MouseEventType::MouseLeave => MouseEventKind::Exited,
         };
 
         MouseEvent {
