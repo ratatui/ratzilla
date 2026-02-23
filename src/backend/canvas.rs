@@ -1,6 +1,10 @@
 use bitvec::{bitvec, prelude::BitVec};
 use ratatui::{backend::ClearType, layout::Rect};
-use std::io::{Error as IoError, Result as IoResult};
+use std::{
+    io::{Error as IoError, Result as IoResult},
+    rc::Rc,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use crate::{
     backend::{
@@ -24,7 +28,7 @@ use ratatui::{
 };
 use web_sys::{
     js_sys::{Boolean, Map},
-    wasm_bindgen::{JsCast, JsValue},
+    wasm_bindgen::{prelude::Closure, JsCast, JsValue},
 };
 
 /// Width of a single cell.
@@ -77,20 +81,30 @@ impl CanvasBackendOptions {
 struct Canvas {
     /// Canvas element.
     inner: web_sys::HtmlCanvasElement,
+    /// Canvas parent element.
+    parent: web_sys::Element,
     /// Rendering context.
     context: web_sys::CanvasRenderingContext2d,
     /// Background color.
     background_color: Color,
+    /// If the canvas is a fixed size, that size
+    size: Option<(u32, u32)>,
 }
 
 impl Canvas {
     /// Constructs a new [`Canvas`].
     fn new(
         parent_element: web_sys::Element,
-        width: u32,
-        height: u32,
+        size: Option<(u32, u32)>,
         background_color: Color,
     ) -> Result<Self, Error> {
+        let (width, height) = size.unwrap_or_else(|| {
+            (
+                parent_element.client_width() as u32,
+                parent_element.client_height() as u32,
+            )
+        });
+
         let canvas = create_canvas_in_element(&parent_element, width, height)?;
 
         let context_options = Map::new();
@@ -104,14 +118,58 @@ impl Canvas {
             .ok_or_else(|| Error::UnableToRetrieveCanvasContext)?
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .expect("Unable to cast canvas context");
-        context.set_font("16px monospace");
-        context.set_text_baseline("top");
 
         Ok(Self {
             inner: canvas,
+            parent: parent_element,
             context,
             background_color,
+            size,
         })
+    }
+
+    /// Returns true if the size changed
+    fn init_ctx_and_resize(&self) -> Result<Option<(usize, usize)>, Error> {
+        let (width, height) = self.size.unwrap_or_else(|| {
+            (
+                self.parent.client_width() as u32,
+                self.parent.client_height() as u32,
+            )
+        });
+
+        let ratio = web_sys::window()
+            .ok_or(Error::UnableToRetrieveWindow)?
+            .device_pixel_ratio();
+
+        let source_w = (width as f64 / CELL_WIDTH).ceil();
+        let source_h = (height as f64 / CELL_HEIGHT).ceil();
+
+        let canvas_w = source_w * CELL_WIDTH;
+        let canvas_h = source_h * CELL_HEIGHT;
+
+        let change_size = self.inner.width() != (canvas_w * ratio) as u32
+            || self.inner.height() != (canvas_h * ratio) as u32;
+
+        if change_size {
+            self.inner.set_width((canvas_w * ratio) as u32);
+            self.inner.set_height((canvas_h * ratio) as u32);
+            self.inner
+                .style()
+                .set_property("width", &format!("{}px", canvas_w))
+                .map_err(|e| Error::JsValue(e))?;
+            self.inner
+                .style()
+                .set_property("height", &format!("{}px", canvas_h))
+                .map_err(|e| Error::JsValue(e))?;
+
+            self.context.set_font("16px monospace");
+            self.context.set_text_baseline("top");
+            self.context
+                .scale(ratio, ratio)
+                .map_err(|e| Error::JsValue(e))?;
+        }
+
+        Ok(change_size.then_some((source_w as usize, source_h as usize)))
     }
 }
 
@@ -121,7 +179,7 @@ impl Canvas {
 #[derive(Debug)]
 pub struct CanvasBackend {
     /// Whether the canvas has been initialized.
-    initialized: bool,
+    initialized: Rc<AtomicBool>,
     /// Always clip foreground drawing to the cell rectangle. Helpful when
     /// dealing with out-of-bounds rendering from problematic fonts. Enabling
     /// this option may cause some performance issues when dealing with large
@@ -170,18 +228,30 @@ impl CanvasBackend {
         // Parent element of canvas (uses <body> unless specified)
         let parent = get_element_by_id_or_body(options.grid_id.as_ref())?;
 
-        let (width, height) = options
-            .size
-            .unwrap_or_else(|| (parent.client_width() as u32, parent.client_height() as u32));
+        let canvas = Canvas::new(parent, options.size, Color::Black)?;
 
-        let canvas = Canvas::new(parent, width, height, Color::Black)?;
+        let initialized = Rc::new(AtomicBool::new(false));
+
+        if options.size.is_none() {
+            let closure = Closure::<dyn FnMut(_)>::new({
+                let initialized = Rc::clone(&initialized);
+                move |_: web_sys::Event| {
+                    initialized.store(false, Ordering::Relaxed);
+                }
+            });
+            web_sys::window()
+                .unwrap()
+                .set_onresize(Some(closure.as_ref().unchecked_ref()));
+            closure.forget();
+        }
+
         let buffer = get_sized_buffer_from_canvas(&canvas.inner);
         let changed_cells = bitvec![0; buffer.len() * buffer[0].len()];
         Ok(Self {
             prev_buffer: buffer.clone(),
             always_clip_cells: options.always_clip_cells,
             buffer,
-            initialized: false,
+            initialized,
             changed_cells,
             canvas,
             cursor_position: None,
@@ -474,10 +544,26 @@ impl Backend for CanvasBackend {
     /// actually render the content to the screen.
     fn flush(&mut self) -> IoResult<()> {
         // Only runs once.
-        if !self.initialized {
+        if !self.initialized.swap(true, Ordering::Relaxed) {
+            web_sys::console::log_1(&"in not initialized".into());
+            if let Some(new_buffer_size) = self.canvas.init_ctx_and_resize()? {
+                self.buffer.resize_with(new_buffer_size.1, || {
+                    vec![Cell::default(); new_buffer_size.0]
+                });
+                self.prev_buffer.resize_with(new_buffer_size.1, || {
+                    vec![Cell::default(); new_buffer_size.0]
+                });
+                for line in self.buffer.iter_mut() {
+                    line.resize_with(new_buffer_size.0, || Cell::default());
+                }
+                for line in self.prev_buffer.iter_mut() {
+                    line.resize_with(new_buffer_size.0, || Cell::default());
+                }
+                self.changed_cells
+                    .resize(new_buffer_size.0 * new_buffer_size.1, true);
+            }
             self.update_grid(true)?;
             self.prev_buffer = self.buffer.clone();
-            self.initialized = true;
             return Ok(());
         }
 
@@ -517,7 +603,10 @@ impl Backend for CanvasBackend {
     }
 
     fn clear(&mut self) -> IoResult<()> {
-        self.buffer = get_sized_buffer();
+        self.buffer
+            .iter_mut()
+            .flatten()
+            .for_each(|c| *c = Cell::default());
         Ok(())
     }
 
