@@ -631,12 +631,10 @@ impl Backend for CanvasBackend {
 
     fn set_cursor_position<P: Into<Position>>(&mut self, position: P) -> IoResult<()> {
         let new_position = position.into();
-        if self.cursor_shown && self.cursor_position != new_position {
+        if self.cursor_position != new_position {
             self.hide_cursor()?;
             self.cursor_position = new_position;
             self.show_cursor()?;
-        } else {
-            self.cursor_position = new_position;
         }
         Ok(())
     }
