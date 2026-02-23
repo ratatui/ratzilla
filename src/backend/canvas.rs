@@ -414,7 +414,6 @@ impl CanvasBackend {
             self.draw_debug()?;
         }
 
-        // fg_context runs last
         self.canvas.bg_context.flush();
         self.canvas.fg_context.flush();
 
