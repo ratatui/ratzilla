@@ -228,6 +228,8 @@ impl Debug for Buffer {
 /// Canvas renderer.
 #[derive(Debug)]
 struct Canvas {
+    /// Canvas element.
+    inner: web_sys::HtmlCanvasElement,
     /// Foreground (symbol) Rendering context.
     fg_context: Buffer,
     /// Background Rendering context.
@@ -257,6 +259,9 @@ impl Canvas {
             .share_ctx_with_other(fg_context.ratzilla_canvas());
 
         Ok(Self {
+            // `bg_context` and `fg_context` point to
+            // the same canvas element
+            inner: fg_context.ratzilla_canvas().get_canvas(),
             fg_context,
             bg_context,
             background_color,
@@ -325,8 +330,7 @@ impl CanvasBackend {
             .unwrap_or_else(|| (parent.client_width() as u32, parent.client_height() as u32));
 
         let canvas = Canvas::new(parent, width, height, Color::Black)?;
-        let buffer =
-            get_sized_buffer_from_canvas(&canvas.fg_context.ratzilla_canvas().get_canvas());
+        let buffer = get_sized_buffer_from_canvas(&canvas.inner);
         Ok(Self {
             always_clip_cells: options.always_clip_cells,
             buffer,
@@ -391,8 +395,7 @@ impl CanvasBackend {
                 self.canvas.background_color,
                 self.canvas.background_color,
             ));
-            // Infallible
-            let size = self.size().unwrap();
+            let size = self.size().expect("Infallible");
             ctx.fill_rect(
                 0.0,
                 0.0,
@@ -663,8 +666,7 @@ impl WebEventHandler for CanvasBackend {
             .with_offset(5.0) // Canvas translation offset
             .with_cell_dimensions(CELL_WIDTH as f64, CELL_HEIGHT as f64);
 
-        let element: web_sys::Element =
-            self.canvas.fg_context.ratzilla_canvas().get_canvas().into();
+        let element: web_sys::Element = self.canvas.inner.clone().into();
         let element_for_closure = element.clone();
 
         // Create mouse event callback
@@ -694,8 +696,7 @@ impl WebEventHandler for CanvasBackend {
         // Clear any existing handlers first
         self.clear_key_events();
 
-        let element: web_sys::Element =
-            self.canvas.fg_context.ratzilla_canvas().get_canvas().into();
+        let element: web_sys::Element = self.canvas.inner.clone().into();
 
         // Make the canvas focusable so it can receive key events
         element
