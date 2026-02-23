@@ -476,6 +476,12 @@ impl Backend for CanvasBackend {
             // or when `always_clip_cells` is enabled.
             let color = actual_fg_color(cell);
 
+            let is_cursor_cell = self.cursor_shown && self.cursor_position == Position::new(x, y);
+
+            if !is_cursor_cell && cell.symbol() == " " {
+                continue;
+            }
+
             // We need to reset the canvas context state in two scenarios:
             // 1. When we need to create a clipping path (for potentially problematic glyphs)
             // 2. When the text color changes
@@ -505,13 +511,11 @@ impl Backend for CanvasBackend {
                 self.canvas.fg_context.set_fill_style(color);
             }
 
-            if cell.symbol() != " " {
-                self.canvas
-                    .fg_context
-                    .fill_text(cell.symbol(), x * CELL_WIDTH, y * CELL_HEIGHT);
-            }
+            self.canvas
+                .fg_context
+                .fill_text(cell.symbol(), x * CELL_WIDTH, y * CELL_HEIGHT);
 
-            if self.cursor_shown && self.cursor_position == Position::new(x, y) {
+            if is_cursor_cell {
                 self.canvas
                     .fg_context
                     .fill_text("_", x * CELL_WIDTH, y * CELL_HEIGHT);
