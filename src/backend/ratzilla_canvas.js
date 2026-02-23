@@ -25,5 +25,9 @@ export class RatzillaCanvas {
     get_canvas() {
         return this.canvas;
     }
+
+    get_ctx() {
+        return this.ctx;
+    }
 }
 
