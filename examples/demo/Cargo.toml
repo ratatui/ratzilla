@@ -10,5 +10,4 @@ ratzilla.workspace = true
 tachyonfx.workspace = true
 web-time.workspace = true
 examples-shared.workspace = true
-console_error_panic_hook.workspace = true
 # tui-big-text = "0.6.1"

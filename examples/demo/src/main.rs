@@ -10,9 +10,9 @@ use std::{cell::RefCell, io::Result, rc::Rc};
 
 use app::App;
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
+use ratzilla::WebRenderer;
 use ratzilla::backend::webgl2::WebGl2BackendOptions;
 use ratzilla::event::KeyCode;
-use ratzilla::WebRenderer;
 
 mod app;
 
@@ -20,7 +20,6 @@ mod effects;
 mod ui;
 
 fn main() -> Result<()> {
-    console_error_panic_hook::set_once();
     let app_state = Rc::new(RefCell::new(App::new("Demo", true)));
 
     let webgl2_options = WebGl2BackendOptions::new()

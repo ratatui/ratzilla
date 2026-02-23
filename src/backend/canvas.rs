@@ -232,18 +232,16 @@ impl CanvasBackend {
 
         let initialized = Rc::new(AtomicBool::new(false));
 
-        if options.size.is_none() {
-            let closure = Closure::<dyn FnMut(_)>::new({
-                let initialized = Rc::clone(&initialized);
-                move |_: web_sys::Event| {
-                    initialized.store(false, Ordering::Relaxed);
-                }
-            });
-            web_sys::window()
-                .unwrap()
-                .set_onresize(Some(closure.as_ref().unchecked_ref()));
-            closure.forget();
-        }
+        let closure = Closure::<dyn FnMut(_)>::new({
+            let initialized = Rc::clone(&initialized);
+            move |_: web_sys::Event| {
+                initialized.store(false, Ordering::Relaxed);
+            }
+        });
+        web_sys::window()
+            .unwrap()
+            .set_onresize(Some(closure.as_ref().unchecked_ref()));
+        closure.forget();
 
         let buffer = get_sized_buffer_from_canvas(&canvas.inner);
         let changed_cells = bitvec![0; buffer.len() * buffer[0].len()];
@@ -545,7 +543,6 @@ impl Backend for CanvasBackend {
     fn flush(&mut self) -> IoResult<()> {
         // Only runs once.
         if !self.initialized.swap(true, Ordering::Relaxed) {
-            web_sys::console::log_1(&"in not initialized".into());
             if let Some(new_buffer_size) = self.canvas.init_ctx_and_resize()? {
                 self.buffer.resize_with(new_buffer_size.1, || {
                     vec![Cell::default(); new_buffer_size.0]
