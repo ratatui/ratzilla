@@ -395,12 +395,11 @@ impl CanvasBackend {
                 self.canvas.background_color,
                 self.canvas.background_color,
             ));
-            let size = self.size().expect("Infallible");
             ctx.fill_rect(
                 0.0,
                 0.0,
-                (size.width * CELL_WIDTH) as f64,
-                (size.height * CELL_HEIGHT) as f64,
+                self.canvas.inner.client_width() as f64,
+                self.canvas.inner.client_height() as f64,
             );
         }
 
@@ -703,7 +702,8 @@ impl WebEventHandler for CanvasBackend {
         let element: web_sys::Element = self.canvas.inner.clone().into();
 
         // Make the canvas focusable so it can receive key events
-        element
+        self.canvas
+            .inner
             .set_attribute("tabindex", "0")
             .map_err(Error::from)?;
 
