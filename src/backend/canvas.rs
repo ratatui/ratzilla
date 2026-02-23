@@ -325,10 +325,8 @@ impl CanvasBackend {
             .unwrap_or_else(|| (parent.client_width() as u32, parent.client_height() as u32));
 
         let canvas = Canvas::new(parent, width, height, Color::Black)?;
-        let width = width / CELL_WIDTH as u32;
-        let height = height / CELL_HEIGHT as u32;
-        let buffer = vec![vec![Cell::default(); width as usize]; height as usize];
-
+        let buffer =
+            get_sized_buffer_from_canvas(&canvas.fg_context.ratzilla_canvas().get_canvas());
         Ok(Self {
             always_clip_cells: options.always_clip_cells,
             buffer,
