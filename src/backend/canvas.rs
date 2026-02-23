@@ -278,10 +278,6 @@ pub struct CanvasBackend {
     always_clip_cells: bool,
     /// Current buffer.
     buffer: Vec<Vec<Cell>>,
-    /// The number of cells wide the canvas is
-    width: u32,
-    /// The number of cells tall the canvas is
-    height: u32,
     /// Groups together and merges rectangles with
     /// the same fill color
     bg_rect_optimizer: RectColorOptimizer,
@@ -336,8 +332,6 @@ impl CanvasBackend {
         Ok(Self {
             always_clip_cells: options.always_clip_cells,
             buffer,
-            width,
-            height,
             initialized: false,
             bg_rect_optimizer: RectColorOptimizer::default(),
             canvas,
@@ -399,11 +393,13 @@ impl CanvasBackend {
                 self.canvas.background_color,
                 self.canvas.background_color,
             ));
+            // Infallible
+            let size = self.size().unwrap();
             ctx.fill_rect(
                 0.0,
                 0.0,
-                (self.width * CELL_WIDTH as u32) as f64,
-                (self.height * CELL_HEIGHT as u32) as f64,
+                (size.width * CELL_WIDTH) as f64,
+                (size.height * CELL_HEIGHT) as f64,
             );
         }
 
@@ -423,8 +419,8 @@ impl CanvasBackend {
     /// Draws cell boundaries for debugging.
     fn draw_debug(&mut self) -> Result<(), Error> {
         let color = self.debug_mode.as_ref().unwrap();
-        for y in 0..self.height {
-            for x in 0..self.width {
+        for (y, line) in self.buffer.iter().enumerate() {
+            for (x, _) in line.iter().enumerate() {
                 self.canvas.fg_context.set_stroke_style_str(color);
                 self.canvas.fg_context.stroke_rect(
                     x as u16 * CELL_WIDTH,
@@ -595,12 +591,11 @@ impl Backend for CanvasBackend {
     }
 
     fn get_cursor(&mut self) -> IoResult<(u16, u16)> {
-        let Position { x, y } = self.get_cursor_position()?;
-        Ok((x, y))
+        Ok((0, 0))
     }
 
-    fn set_cursor(&mut self, x: u16, y: u16) -> IoResult<()> {
-        self.set_cursor_position(Position::new(x, y))
+    fn set_cursor(&mut self, _x: u16, _y: u16) -> IoResult<()> {
+        Ok(())
     }
 
     fn clear(&mut self) -> IoResult<()> {
@@ -617,7 +612,14 @@ impl Backend for CanvasBackend {
     }
 
     fn size(&self) -> IoResult<Size> {
-        Ok(Size::new(self.width as u16, self.height as u16))
+        Ok(Size::new(
+            self.buffer
+                .get(0)
+                .map(|b| b.len())
+                .unwrap_or(0)
+                .saturating_sub(1) as u16,
+            self.buffer.len().saturating_sub(1) as u16,
+        ))
     }
 
     fn window_size(&mut self) -> IoResult<WindowSize> {
@@ -655,8 +657,8 @@ impl WebEventHandler for CanvasBackend {
         self.clear_mouse_events();
 
         // Get grid dimensions from the buffer
-        let grid_width = self.width as u16;
-        let grid_height = self.height as u16;
+        let grid_width = self.buffer[0].len() as u16;
+        let grid_height = self.buffer.len() as u16;
 
         // Configure coordinate translation for canvas backend
         let config = MouseConfig::new(grid_width, grid_height)
