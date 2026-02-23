@@ -28,7 +28,7 @@ use ratatui::{
 };
 use web_sys::{
     js_sys::{Boolean, Map},
-    wasm_bindgen::{prelude::Closure, JsCast, JsValue},
+    wasm_bindgen::{JsCast, JsValue},
 };
 
 /// Width of a single cell.
@@ -203,6 +203,8 @@ pub struct CanvasBackend {
     mouse_callback: Option<MouseCallbackState>,
     /// Key event callback handler.
     key_callback: Option<EventCallback<web_sys::KeyboardEvent>>,
+    /// Resize event callback handler
+    resize_callback: EventCallback<web_sys::Event>,
 }
 
 /// Type alias for mouse event callback state.
@@ -232,16 +234,16 @@ impl CanvasBackend {
 
         let initialized = Rc::new(AtomicBool::new(false));
 
-        let closure = Closure::<dyn FnMut(_)>::new({
-            let initialized = Rc::clone(&initialized);
-            move |_: web_sys::Event| {
-                initialized.store(false, Ordering::Relaxed);
-            }
-        });
-        web_sys::window()
-            .unwrap()
-            .set_onresize(Some(closure.as_ref().unchecked_ref()));
-        closure.forget();
+        let resize_callback = EventCallback::new(
+            web_sys::window().ok_or(Error::UnableToRetrieveWindow)?,
+            &["resize"],
+            {
+                let initialized = Rc::clone(&initialized);
+                move |_: web_sys::Event| {
+                    initialized.store(false, Ordering::Relaxed);
+                }
+            },
+        )?;
 
         let buffer = get_sized_buffer_from_canvas(&canvas.inner);
         let changed_cells = bitvec![0; buffer.len() * buffer[0].len()];
@@ -257,6 +259,7 @@ impl CanvasBackend {
             debug_mode: None,
             mouse_callback: None,
             key_callback: None,
+            resize_callback,
         })
     }
 
