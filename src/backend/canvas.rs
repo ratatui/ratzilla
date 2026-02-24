@@ -82,7 +82,7 @@ struct Canvas {
     /// Canvas element.
     inner: web_sys::HtmlCanvasElement,
     /// Canvas parent element.
-    parent: web_sys::Element,
+    parent: Option<web_sys::Element>,
     /// Rendering context.
     context: web_sys::CanvasRenderingContext2d,
     /// Background color.
@@ -94,18 +94,33 @@ struct Canvas {
 impl Canvas {
     /// Constructs a new [`Canvas`].
     fn new(
-        parent_element: web_sys::Element,
+        parent_element: Option<web_sys::Element>,
         size: Option<(u32, u32)>,
         background_color: Color,
     ) -> Result<Self, Error> {
-        let (width, height) = size.unwrap_or_else(|| {
-            (
-                parent_element.client_width() as u32,
-                parent_element.client_height() as u32,
-            )
-        });
+        let (width, height) = size
+            .or_else(|| {
+                parent_element
+                    .as_ref()
+                    .map(|p| (p.client_width() as u32, p.client_height() as u32))
+            })
+            .unwrap_or_else(|| {
+                let (width, height) = get_raw_window_size();
+                (width as u32, height as u32)
+            });
 
-        let canvas = create_canvas_in_element(&parent_element, width, height)?;
+        let canvas = if let Some(element) = parent_element.as_ref() {
+            create_canvas_in_element(element, width, height)?
+        } else {
+            create_canvas_in_element(
+                &get_document()?
+                    .body()
+                    .ok_or(Error::UnableToRetrieveBody)?
+                    .into(),
+                width,
+                height,
+            )?
+        };
 
         let context_options = Map::new();
         context_options.set(&JsValue::from_str("alpha"), &Boolean::from(JsValue::TRUE));
@@ -130,12 +145,17 @@ impl Canvas {
 
     /// Returns true if the size changed
     fn init_ctx_and_resize(&self) -> Result<Option<(usize, usize)>, Error> {
-        let (width, height) = self.size.unwrap_or_else(|| {
-            (
-                self.parent.client_width() as u32,
-                self.parent.client_height() as u32,
-            )
-        });
+        let (width, height) = self
+            .size
+            .or_else(|| {
+                self.parent
+                    .as_ref()
+                    .map(|p| (p.client_width() as u32, p.client_height() as u32))
+            })
+            .unwrap_or_else(|| {
+                let (width, height) = get_raw_window_size();
+                (width as u32, height as u32)
+            });
 
         let ratio = web_sys::window()
             .ok_or(Error::UnableToRetrieveWindow)?
@@ -224,7 +244,11 @@ impl CanvasBackend {
     /// Constructs a new [`CanvasBackend`] with the given options.
     pub fn new_with_options(options: CanvasBackendOptions) -> Result<Self, Error> {
         // Parent element of canvas (uses <body> unless specified)
-        let parent = get_element_by_id_or_body(options.grid_id.as_ref())?;
+        let parent = if let Some(id) = options.grid_id.as_ref() {
+            Some(get_element_by_id_or_body(Some(id))?)
+        } else {
+            None
+        };
 
         let canvas = Canvas::new(parent, options.size, Color::Black)?;
 
