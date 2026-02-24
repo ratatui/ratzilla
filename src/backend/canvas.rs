@@ -308,7 +308,6 @@ impl CanvasBackend {
                 self.canvas.inner.client_height() as f64,
             );
         }
-        self.canvas.context.translate(5_f64, 5_f64)?;
 
         // NOTE: The draw_* functions each traverse the buffer once, instead of
         // traversing it once per cell; this is done to reduce the number of
@@ -321,7 +320,6 @@ impl CanvasBackend {
             self.draw_debug()?;
         }
 
-        self.canvas.context.translate(-5_f64, -5_f64)?;
         Ok(())
     }
 
