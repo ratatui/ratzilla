@@ -165,6 +165,7 @@ impl Canvas {
         Ok(change_size.then_some((source_w as usize, source_h as usize)))
     }
 
+    // Very useful code from here https://github.com/ghostty-org/ghostty/blob/a88689ca754a6eb7dce6015b85ccb1416b5363d8/src/font/face/web_canvas.zig#L242
     fn measure_font(&mut self) -> Result<(), Error> {
         let metrics = self.context.measure_text("█")?;
 
@@ -413,6 +414,8 @@ impl CanvasBackend {
                     self.canvas.context.set_fill_style_str(&color);
                 }
 
+                // Very useful symbol positioning formulas from here
+                // https://github.com/ghostty-org/ghostty/blob/a88689ca754a6eb7dce6015b85ccb1416b5363d8/src/Surface.zig#L1589C5-L1589C10
                 self.canvas.context.fill_text(
                     cell.symbol(),
                     x as f64 * self.canvas.cell_width,
