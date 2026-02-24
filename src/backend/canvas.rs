@@ -155,18 +155,14 @@ impl Canvas {
             self.inner.set_height((canvas_h * ratio) as u32);
             self.inner
                 .style()
-                .set_property("width", &format!("{}px", canvas_w))
-                .map_err(|e| Error::JsValue(e))?;
+                .set_property("width", &format!("{}px", canvas_w))?;
             self.inner
                 .style()
-                .set_property("height", &format!("{}px", canvas_h))
-                .map_err(|e| Error::JsValue(e))?;
+                .set_property("height", &format!("{}px", canvas_h))?;
 
             self.context.set_font("16px monospace");
             self.context.set_text_baseline("top");
-            self.context
-                .scale(ratio, ratio)
-                .map_err(|e| Error::JsValue(e))?;
+            self.context.scale(ratio, ratio)?;
         }
 
         Ok(change_size.then_some((source_w as usize, source_h as usize)))
@@ -204,7 +200,7 @@ pub struct CanvasBackend {
     /// Key event callback handler.
     key_callback: Option<EventCallback<web_sys::KeyboardEvent>>,
     /// Resize event callback handler
-    resize_callback: EventCallback<web_sys::Event>,
+    _resize_callback: EventCallback<web_sys::Event>,
 }
 
 /// Type alias for mouse event callback state.
@@ -259,7 +255,7 @@ impl CanvasBackend {
             debug_mode: None,
             mouse_callback: None,
             key_callback: None,
-            resize_callback,
+            _resize_callback: resize_callback,
         })
     }
 
