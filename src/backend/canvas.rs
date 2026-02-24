@@ -268,7 +268,6 @@ impl CanvasBackend {
             canvas,
             cursor_position: None,
             cursor_shape: CursorShape::SteadyBlock,
-            // debug_mode: Some("red".to_owned()),
             debug_mode: None,
             mouse_callback: None,
             key_callback: None,
