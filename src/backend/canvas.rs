@@ -142,8 +142,8 @@ impl Canvas {
             .ok_or(Error::UnableToRetrieveWindow)?
             .device_pixel_ratio();
 
-        let source_w = (width as f64 / CELL_WIDTH).floor();
-        let source_h = (height as f64 / CELL_HEIGHT).floor();
+        let source_w = (width as f64 / self.cell_width).floor();
+        let source_h = (height as f64 / self.cell_height).floor();
 
         let canvas_w = source_w * self.cell_width;
         let canvas_h = source_h * self.cell_height;
@@ -175,7 +175,7 @@ impl Canvas {
         if metrics.actual_bounding_box_right() > 0.0 {
             self.cell_width = metrics.actual_bounding_box_right();
         } else {
-            self.cell_width = metrics.width();
+            self.cell_width = metrics.width().ceil();
         }
 
         self.cell_height =
