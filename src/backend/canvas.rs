@@ -141,8 +141,8 @@ impl Canvas {
             .ok_or(Error::UnableToRetrieveWindow)?
             .device_pixel_ratio();
 
-        let source_w = (width as f64 / CELL_WIDTH).ceil();
-        let source_h = (height as f64 / CELL_HEIGHT).ceil();
+        let source_w = (width as f64 / CELL_WIDTH).floor();
+        let source_h = (height as f64 / CELL_HEIGHT).floor();
 
         let canvas_w = source_w * CELL_WIDTH;
         let canvas_h = source_h * CELL_HEIGHT;
