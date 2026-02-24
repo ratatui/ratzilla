@@ -3,7 +3,7 @@ use ratatui::{backend::ClearType, layout::Rect};
 use std::{
     io::{Error as IoError, Result as IoResult},
     rc::Rc,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicU16, Ordering},
 };
 
 use crate::{
@@ -219,6 +219,8 @@ pub struct CanvasBackend {
     /// this option may cause some performance issues when dealing with large
     /// numbers of simultaneous changes.
     always_clip_cells: bool,
+    /// The size of the buffer in cells
+    grid_size: Rc<(AtomicU16, AtomicU16)>,
     /// Current buffer.
     buffer: Vec<Vec<Cell>>,
     /// Previous buffer.
@@ -287,10 +289,12 @@ impl CanvasBackend {
         let changed_cells = bitvec![0; 1];
         canvas.init_ctx();
         canvas.measure_font()?;
+        let buffer_size = Rc::new((AtomicU16::new(1), AtomicU16::new(1)));
         Ok(Self {
             prev_buffer: buffer.clone(),
             always_clip_cells: options.always_clip_cells,
             buffer,
+            grid_size: buffer_size,
             initialized,
             changed_cells,
             canvas,
@@ -602,6 +606,12 @@ impl Backend for CanvasBackend {
                 }
                 self.changed_cells
                     .resize(new_buffer_size.0 * new_buffer_size.1, true);
+                self.grid_size
+                    .0
+                    .store(new_buffer_size.0 as u16, Ordering::Relaxed);
+                self.grid_size
+                    .1
+                    .store(new_buffer_size.1 as u16, Ordering::Relaxed);
             }
             self.update_grid(true)?;
             self.prev_buffer = self.buffer.clone();
@@ -653,8 +663,8 @@ impl Backend for CanvasBackend {
 
     fn size(&self) -> IoResult<Size> {
         Ok(Size::new(
-            self.buffer[0].len() as u16,
-            self.buffer.len() as u16,
+            self.grid_size.0.load(Ordering::Relaxed),
+            self.grid_size.1.load(Ordering::Relaxed),
         ))
     }
 
@@ -700,27 +710,26 @@ impl WebEventHandler for CanvasBackend {
         // Clear any existing handlers first
         self.clear_mouse_events();
 
-        // Get grid dimensions from the buffer
-        let grid_width = self.buffer[0].len() as u16;
-        let grid_height = self.buffer.len() as u16;
-
-        // Configure coordinate translation for canvas backend
-        let config = MouseConfig::new(grid_width, grid_height)
-            .with_offset(5.0) // Canvas translation offset
-            .with_cell_dimensions(self.canvas.cell_width, self.canvas.cell_height);
-
         let element: web_sys::Element = self.canvas.inner.clone().into();
         let element_for_closure = element.clone();
 
         // Create mouse event callback
-        let mouse_callback = EventCallback::new(
-            element,
-            MOUSE_EVENT_TYPES,
+        let mouse_callback = EventCallback::new(element, MOUSE_EVENT_TYPES, {
+            let grid_size = Rc::clone(&self.grid_size);
+            // These are not expected to change, since there
+            // is no ability to change the font on the fly
+            let cell_width = self.canvas.cell_width;
+            let cell_height = self.canvas.cell_height;
             move |event: web_sys::MouseEvent| {
+                let config = MouseConfig::new(
+                    grid_size.0.load(Ordering::Relaxed),
+                    grid_size.1.load(Ordering::Relaxed),
+                )
+                .with_cell_dimensions(cell_width, cell_height);
                 let mouse_event = create_mouse_event(&event, &element_for_closure, &config);
                 callback(mouse_event);
-            },
-        )?;
+            }
+        })?;
 
         self.mouse_callback = Some(mouse_callback);
 
