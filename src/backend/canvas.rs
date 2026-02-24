@@ -77,8 +77,11 @@ struct Canvas {
     background_color: Color,
     /// If the canvas is a fixed size, that size
     size: Option<(u32, u32)>,
+    /// The width of a cell
     cell_width: f64,
+    /// The height of a cell
     cell_height: f64,
+    /// The baseline of a font character
     cell_baseline: f64,
 }
 
