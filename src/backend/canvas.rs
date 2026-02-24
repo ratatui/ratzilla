@@ -606,8 +606,8 @@ impl Backend for CanvasBackend {
 
     fn size(&self) -> IoResult<Size> {
         Ok(Size::new(
-            self.buffer[0].len().saturating_sub(1) as u16,
-            self.buffer.len().saturating_sub(1) as u16,
+            self.buffer[0].len() as u16,
+            self.buffer.len() as u16,
         ))
     }
 
