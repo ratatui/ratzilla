@@ -427,6 +427,27 @@ impl WebGl2Backend {
         Ok(())
     }
 
+    /// Returns the cell size in physical pixels at the current device
+    /// pixel ratio.
+    ///
+    /// For static atlases, this is the cell size from the atlas data.
+    /// For dynamic atlases, this is measured from the rasterized font.
+    pub fn cell_size(&self) -> (i32, i32) {
+        self.beamterm.cell_size()
+    }
+
+    /// Resizes the canvas and terminal grid to the specified logical pixel dimensions.
+    ///
+    /// This updates the canvas buffer, CSS display size (if auto-resize is enabled),
+    /// viewport, and recalculates the terminal grid dimensions based on the current
+    /// cell size.
+    pub fn set_size(&mut self, width: u32, height: u32) -> Result<(), Error> {
+        self.beamterm.resize(width as i32, height as i32)?;
+        self.cursor_over_hyperlink = false;
+        self.update_mouse_handler_metrics();
+        Ok(())
+    }
+
     /// Updates metrics on externally-managed mouse handlers after resize or DPR changes.
     ///
     /// Beamterm's `Terminal::resize()` only updates its own internal mouse handler.
