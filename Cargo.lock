@@ -32,29 +32,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
-name = "beamterm-data"
-version = "0.15.0"
+name = "beamterm-core"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7927a4e9de1e0028f777ace6cd5cd5e8d7f87a5cfec44a4f8dc135f18bc1f0e"
-dependencies = [
- "compact_str",
- "miniz_oxide",
-]
-
-[[package]]
-name = "beamterm-renderer"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a0d1b38455b427293dffbb0eb970c91c04f8ab32cb47b3884ed46924fda5819"
+checksum = "dd35ff2f9ffbbacf0a201cc76251d7489420d73f30e0efa34fe6f2ff640ba9fb"
 dependencies = [
  "beamterm-data",
  "bitflags",
  "compact_str",
- "console_error_panic_hook",
  "emojis",
- "js-sys",
+ "glow",
  "lru",
  "rustc-hash",
+ "thiserror",
+ "unicode-width",
+]
+
+[[package]]
+name = "beamterm-data"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b0a5d2b82a5e8cfe1495e63a677d4b5a973ecc88b156034bdec9023bd0853f2"
+dependencies = [
+ "compact_str",
+ "miniz_oxide",
+ "thiserror",
+]
+
+[[package]]
+name = "beamterm-renderer"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93bb8475a1f3a8814b83c7c406721f0e7f295ed619dec281918f47b4a243fbfd"
+dependencies = [
+ "beamterm-core",
+ "beamterm-data",
+ "bitflags",
+ "compact_str",
+ "console_error_panic_hook",
+ "glow",
+ "js-sys",
  "thiserror",
  "unicode-width",
  "wasm-bindgen",
@@ -253,6 +270,18 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "glow"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5e5ea60d70410161c8bf5da3fdfeaa1c72ed2c15f8bbb9d19fe3a4fad085f08"
+dependencies = [
+ "js-sys",
+ "slotmap",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -669,6 +698,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
+name = "slotmap"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdd58c3c93c3d278ca835519292445cb4b0d4dc59ccfdf7ceadaab3f8aeb4038"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -790,6 +828,12 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 dependencies = [
  "rustc-std-workspace-core",
 ]
+
+[[package]]
+name = "version_check"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "walkdir"
