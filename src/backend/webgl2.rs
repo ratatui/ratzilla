@@ -4,6 +4,7 @@ use crate::{
         event_callback::{EventCallback, KEY_EVENT_TYPES},
         utils::*,
     },
+    cell_sized::CellSized,
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,
@@ -432,8 +433,10 @@ impl WebGl2Backend {
     ///
     /// For static atlases, this is the cell size from the atlas data.
     /// For dynamic atlases, this is measured from the rasterized font.
+    #[deprecated]
     pub fn cell_size(&self) -> (i32, i32) {
-        self.beamterm.cell_size()
+        let (w, h) = self.cell_size_px();
+        (w as i32, h as i32)
     }
 
     /// Resizes the canvas and terminal grid to the specified logical pixel dimensions.
@@ -461,6 +464,8 @@ impl WebGl2Backend {
             .unwrap_or(1.0);
         let cell_width = phys_w as f32 / dpr;
         let cell_height = phys_h as f32 / dpr;
+
+        let (cell_width, cell_height) = self.cell_size_css_px();
 
         if let Some(handler) = &mut self._user_mouse_handler {
             handler.update_metrics(cols, rows, cell_width, cell_height);
@@ -699,6 +704,19 @@ impl WebGl2Backend {
         let beamterm = beamterm.auto_resize_canvas_css(!options.disable_auto_css_resize);
 
         Ok(beamterm.build()?)
+    }
+}
+
+impl CellSized for WebGl2Backend {
+    fn cell_size_px(&self) -> (f32, f32) {
+        let (w, h) = self.beamterm.cell_size();
+        (w as f32, h as f32)
+    }
+
+    fn cell_size_css_px(&self) -> (f32, f32) {
+        let (w, h) = self.beamterm.cell_size();
+        let dpr = get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32;
+        (w as f32 / dpr, h as f32 / dpr)
     }
 }
 
