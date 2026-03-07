@@ -28,7 +28,7 @@ use std::{
     mem::swap,
     rc::Rc,
 };
-use web_sys::{wasm_bindgen::JsCast, window, Element};
+use web_sys::{wasm_bindgen::JsCast, Element};
 
 /// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
