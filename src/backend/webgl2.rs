@@ -206,7 +206,7 @@ impl WebGl2BackendOptions {
     /// Sets up a default mouse handler using [`WebGl2BackendOptions::on_hyperlink_click`].
     pub fn enable_hyperlinks(self) -> Self {
         self.on_hyperlink_click(|url| {
-            if let Some(w) = window() {
+            if let Ok(w) = get_window() {
                 w.open_with_url_and_target(url, "_blank")
                     .unwrap_or_default();
             }
@@ -433,7 +433,10 @@ impl WebGl2Backend {
     ///
     /// For static atlases, this is the cell size from the atlas data.
     /// For dynamic atlases, this is measured from the rasterized font.
-    #[deprecated]
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use cell_size_px instead, which returns physical pixel dimensions"
+    )]
     pub fn cell_size(&self) -> (i32, i32) {
         let (w, h) = self.cell_size_px();
         (w as i32, h as i32)
@@ -458,13 +461,6 @@ impl WebGl2Backend {
     /// separately.
     fn update_mouse_handler_metrics(&mut self) {
         let (cols, rows) = self.beamterm.terminal_size();
-        let (phys_w, phys_h) = self.beamterm.cell_size();
-        let dpr = window()
-            .map(|w| w.device_pixel_ratio() as f32)
-            .unwrap_or(1.0);
-        let cell_width = phys_w as f32 / dpr;
-        let cell_height = phys_h as f32 / dpr;
-
         let (cell_width, cell_height) = self.cell_size_css_px();
 
         if let Some(handler) = &mut self._user_mouse_handler {
@@ -715,7 +711,7 @@ impl CellSized for WebGl2Backend {
 
     fn cell_size_css_px(&self) -> (f32, f32) {
         let (w, h) = self.beamterm.cell_size();
-        let dpr = get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32;
+        let dpr = get_device_pixel_ratio();
         (w as f32 / dpr, h as f32 / dpr)
     }
 }

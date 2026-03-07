@@ -268,8 +268,7 @@ impl DomBackend {
 
 impl CellSized for DomBackend {
     fn cell_size_px(&self) -> (f32, f32) {
-        let dpr = get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32;
-
+        let dpr = get_device_pixel_ratio();
         (self.cell_size.0 as f32 * dpr, self.cell_size.1 as f32 * dpr)
     }
 

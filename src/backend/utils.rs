@@ -246,6 +246,11 @@ pub(crate) fn get_window() -> Result<Window, Error> {
     window().ok_or(Error::UnableToRetrieveWindow)
 }
 
+/// Returns the device pixel ratio from the window.
+pub(crate) fn get_device_pixel_ratio() -> f32 {
+    get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32
+}
+
 /// Returns an element by its ID or the body element if no ID is provided.
 pub(crate) fn get_element_by_id_or_body(id: Option<&String>) -> Result<web_sys::Element, Error> {
     match id {

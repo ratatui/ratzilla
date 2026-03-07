@@ -20,7 +20,7 @@ pub mod backend;
 mod render;
 
 /// Cell size metrics for backends.
-pub mod cell_sized;
+pub(crate) mod cell_sized;
 
 // Re-export ratatui crate.
 pub use ratatui;

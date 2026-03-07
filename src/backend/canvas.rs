@@ -441,8 +441,7 @@ impl CanvasBackend {
 
 impl CellSized for CanvasBackend {
     fn cell_size_px(&self) -> (f32, f32) {
-        let dpr = get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32;
-
+        let dpr = get_device_pixel_ratio();
         (CELL_WIDTH as f32 * dpr, CELL_HEIGHT as f32 * dpr)
     }
 
