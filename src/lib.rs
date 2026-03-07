@@ -19,6 +19,9 @@ pub mod backend;
 /// Rendering.
 mod render;
 
+/// Cell size metrics for backends.
+mod cell_sized;
+
 // Re-export ratatui crate.
 pub use ratatui;
 
@@ -31,4 +34,5 @@ pub use backend::{
     dom::DomBackend,
     webgl2::{FontAtlasConfig, SelectionMode, WebGl2Backend},
 };
+pub use cell_sized::CellSized;
 pub use render::{WebEventHandler, WebRenderer};

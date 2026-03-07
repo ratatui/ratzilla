@@ -4,7 +4,7 @@ use ratzilla::{
     error::Error,
     event::{KeyEvent, MouseEvent},
     ratatui::{backend::Backend, prelude::backend::ClearType, Terminal, TerminalOptions},
-    CanvasBackend, DomBackend, WebEventHandler, WebGl2Backend,
+    CanvasBackend, CellSized, DomBackend, WebEventHandler, WebGl2Backend,
 };
 use std::{convert::TryFrom, fmt, io};
 use web_sys::{window, Url};
@@ -74,6 +74,24 @@ impl RatzillaBackend {
             RatzillaBackend::Dom(_) => BackendType::Dom,
             RatzillaBackend::Canvas(_) => BackendType::Canvas,
             RatzillaBackend::WebGl2(_) => BackendType::WebGl2,
+        }
+    }
+}
+
+impl CellSized for RatzillaBackend {
+    fn cell_size_px(&self) -> (f32, f32) {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.cell_size_px(),
+            RatzillaBackend::Canvas(backend) => backend.cell_size_px(),
+            RatzillaBackend::WebGl2(backend) => backend.cell_size_px(),
+        }
+    }
+
+    fn cell_size_css_px(&self) -> (f32, f32) {
+        match self {
+            RatzillaBackend::Dom(backend) => backend.cell_size_css_px(),
+            RatzillaBackend::Canvas(backend) => backend.cell_size_css_px(),
+            RatzillaBackend::WebGl2(backend) => backend.cell_size_css_px(),
         }
     }
 }
@@ -241,6 +259,16 @@ impl FpsTrackingBackend {
 impl From<RatzillaBackend> for FpsTrackingBackend {
     fn from(backend: RatzillaBackend) -> Self {
         Self::new(backend)
+    }
+}
+
+impl CellSized for FpsTrackingBackend {
+    fn cell_size_px(&self) -> (f32, f32) {
+        self.inner.cell_size_px()
+    }
+
+    fn cell_size_css_px(&self) -> (f32, f32) {
+        self.inner.cell_size_css_px()
     }
 }
 
