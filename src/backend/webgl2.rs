@@ -685,9 +685,7 @@ impl CellSized for WebGl2Backend {
     }
 
     fn cell_size_css_px(&self) -> (f32, f32) {
-        let (w, h) = self.beamterm.cell_size();
-        let dpr = get_device_pixel_ratio();
-        (w as f32 / dpr, h as f32 / dpr)
+        self.beamterm.grid().borrow().css_cell_size()
     }
 }
 
