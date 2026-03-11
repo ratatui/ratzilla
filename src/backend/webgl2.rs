@@ -374,7 +374,7 @@ impl WebGl2Backend {
             (None, None)
         };
 
-        let mut backend = Self {
+        Ok(Self {
             beamterm,
             cursor_position: None,
             options,
@@ -385,12 +385,7 @@ impl WebGl2Backend {
             hyperlink_state,
             _user_mouse_handler: None,
             _user_key_handler: None,
-        };
-
-        // Convert handler metrics from physical pixels to CSS pixels
-        backend.update_mouse_handler_metrics();
-
-        Ok(backend)
+        })
     }
 
     /// Returns the options objects used to create this backend.
@@ -423,8 +418,6 @@ impl WebGl2Backend {
         // Reset hyperlink cursor state when canvas is resized
         self.cursor_over_hyperlink = false;
 
-        self.update_mouse_handler_metrics();
-
         Ok(())
     }
 
@@ -450,25 +443,7 @@ impl WebGl2Backend {
     pub fn set_size(&mut self, width: u32, height: u32) -> Result<(), Error> {
         self.beamterm.resize(width as i32, height as i32)?;
         self.cursor_over_hyperlink = false;
-        self.update_mouse_handler_metrics();
         Ok(())
-    }
-
-    /// Updates metrics on externally-managed mouse handlers after resize or DPR changes.
-    ///
-    /// Beamterm's `Terminal::resize()` only updates its own internal mouse handler.
-    /// The user and hyperlink handlers created by ratzilla need their metrics updated
-    /// separately.
-    fn update_mouse_handler_metrics(&mut self) {
-        let (cols, rows) = self.beamterm.terminal_size();
-        let (cell_width, cell_height) = self.cell_size_css_px();
-
-        if let Some(handler) = &mut self._user_mouse_handler {
-            handler.update_metrics(cols, rows, cell_width, cell_height);
-        }
-        if let Some(handler) = &mut self._hyperlink_mouse_handler {
-            handler.update_metrics(cols, rows, cell_width, cell_height);
-        }
     }
 
     /// Checks if the canvas size matches the display size and resizes it if necessary.
@@ -937,10 +912,6 @@ impl WebEventHandler for WebGl2Backend {
         )?;
 
         self._user_mouse_handler = Some(mouse_handler);
-
-        // TerminalMouseHandler is constructed with physical pixel metrics;
-        // convert to CSS pixels so coordinate translation is correct on HiDPI.
-        self.update_mouse_handler_metrics();
 
         Ok(())
     }
