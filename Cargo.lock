@@ -33,7 +33,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "beamterm-core"
-version = "0.16.0"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ede1fea2497ca8e830cfef6e12476cef80fe9fdb5a4088a7d61a2eb24a69b67"
 dependencies = [
  "beamterm-data",
  "bitflags",
@@ -48,7 +50,9 @@ dependencies = [
 
 [[package]]
 name = "beamterm-data"
-version = "0.16.0"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "807afb61cd85b78f4218c8f10c8a2ee12ee22b4504ac99b1ac7c4d11412336b8"
 dependencies = [
  "compact_str",
  "miniz_oxide",
@@ -57,7 +61,9 @@ dependencies = [
 
 [[package]]
 name = "beamterm-renderer"
-version = "0.16.0"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bf24d97fcf8104c12e4e394c8fac55576bca0ee25bd70d9eac87ac72987d3e5"
 dependencies = [
  "beamterm-core",
  "beamterm-data",
@@ -268,9 +274,9 @@ dependencies = [
 
 [[package]]
 name = "glow"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5e5ea60d70410161c8bf5da3fdfeaa1c72ed2c15f8bbb9d19fe3a4fad085f08"
+checksum = "29038e1c483364cc6bb3cf78feee1816002e127c331a1eec55a4d202b9e1adb5"
 dependencies = [
  "js-sys",
  "slotmap",
