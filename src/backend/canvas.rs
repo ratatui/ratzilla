@@ -4,13 +4,13 @@ use std::io::{Error as IoError, Result as IoResult};
 
 use crate::{
     backend::{
+        cell_sized::CellSized,
         color::{actual_bg_color, actual_fg_color},
         event_callback::{
             create_mouse_event, EventCallback, MouseConfig, KEY_EVENT_TYPES, MOUSE_EVENT_TYPES,
         },
         utils::*,
     },
-    cell_sized::CellSized,
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,

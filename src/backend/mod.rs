@@ -77,5 +77,7 @@ pub(super) mod event_callback;
 /// Backend utilities.
 pub(crate) mod utils;
 
+/// Cell size metrics for backends.
+pub mod cell_sized;
 /// Cursor shapes.
 pub mod cursor;

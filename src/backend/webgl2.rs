@@ -4,7 +4,6 @@ use crate::{
         event_callback::{EventCallback, KEY_EVENT_TYPES},
         utils::*,
     },
-    cell_sized::CellSized,
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,
@@ -30,6 +29,7 @@ use std::{
 };
 use web_sys::{wasm_bindgen::JsCast, Element};
 
+use crate::backend::cell_sized::CellSized;
 /// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
 
