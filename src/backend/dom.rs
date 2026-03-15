@@ -16,6 +16,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     backend::{
+        cell_sized::CellSized,
         event_callback::{
             create_mouse_event, EventCallback, MouseConfig, KEY_EVENT_TYPES, MOUSE_EVENT_TYPES,
         },
@@ -262,6 +263,17 @@ impl DomBackend {
             self.grid.append_child(&pre)?;
         }
         Ok(())
+    }
+}
+
+impl CellSized for DomBackend {
+    fn cell_size_px(&self) -> (f32, f32) {
+        let dpr = get_device_pixel_ratio();
+        (self.cell_size.0 as f32 * dpr, self.cell_size.1 as f32 * dpr)
+    }
+
+    fn cell_size_css_px(&self) -> (f32, f32) {
+        (self.cell_size.0 as f32, self.cell_size.1 as f32)
     }
 }
 

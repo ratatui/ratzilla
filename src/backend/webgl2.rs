@@ -27,8 +27,9 @@ use std::{
     mem::swap,
     rc::Rc,
 };
-use web_sys::{wasm_bindgen::JsCast, window, Element};
+use web_sys::{wasm_bindgen::JsCast, Element};
 
+use crate::backend::cell_sized::CellSized;
 /// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
 
@@ -205,7 +206,7 @@ impl WebGl2BackendOptions {
     /// Sets up a default mouse handler using [`WebGl2BackendOptions::on_hyperlink_click`].
     pub fn enable_hyperlinks(self) -> Self {
         self.on_hyperlink_click(|url| {
-            if let Some(w) = window() {
+            if let Ok(w) = get_window() {
                 w.open_with_url_and_target(url, "_blank")
                     .unwrap_or_default();
             }
@@ -425,8 +426,13 @@ impl WebGl2Backend {
     ///
     /// For static atlases, this is the cell size from the atlas data.
     /// For dynamic atlases, this is measured from the rasterized font.
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use cell_size_px instead, which returns physical pixel dimensions"
+    )]
     pub fn cell_size(&self) -> (i32, i32) {
-        self.beamterm.cell_size()
+        let (w, h) = self.cell_size_px();
+        (w as i32, h as i32)
     }
 
     /// Resizes the canvas and terminal grid to the specified logical pixel dimensions.
@@ -669,6 +675,17 @@ impl WebGl2Backend {
         let beamterm = beamterm.auto_resize_canvas_css(!options.disable_auto_css_resize);
 
         Ok(beamterm.build()?)
+    }
+}
+
+impl CellSized for WebGl2Backend {
+    fn cell_size_px(&self) -> (f32, f32) {
+        let (w, h) = self.beamterm.cell_size();
+        (w as f32, h as f32)
+    }
+
+    fn cell_size_css_px(&self) -> (f32, f32) {
+        self.beamterm.grid().borrow().css_cell_size()
     }
 }
 

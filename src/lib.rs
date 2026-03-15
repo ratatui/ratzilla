@@ -27,6 +27,7 @@ pub use web_sys;
 
 pub use backend::{
     canvas::CanvasBackend,
+    cell_sized::CellSized,
     cursor::CursorShape,
     dom::DomBackend,
     webgl2::{FontAtlasConfig, SelectionMode, WebGl2Backend},
