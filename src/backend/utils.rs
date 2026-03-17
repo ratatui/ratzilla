@@ -212,6 +212,7 @@ pub(crate) fn get_raw_screen_size() -> (i32, i32) {
     (s.width().unwrap(), s.height().unwrap())
 }
 
+#[allow(dead_code)]
 /// Returns a buffer based on the screen size.
 pub(crate) fn get_sized_buffer() -> Vec<Vec<Cell>> {
     let size = get_size();
@@ -228,10 +229,16 @@ pub(crate) fn get_size() -> Size {
 }
 
 /// Returns a buffer based on the canvas size.
-pub(crate) fn get_sized_buffer_from_canvas(canvas: &HtmlCanvasElement) -> Vec<Vec<Cell>> {
-    let width = canvas.client_width() as u16 / 10_u16;
-    let height = canvas.client_height() as u16 / 19_u16;
-    vec![vec![Cell::default(); width as usize]; height as usize]
+pub(crate) fn get_sized_buffer_from_canvas(
+    canvas: &HtmlCanvasElement,
+    cell_width: f64,
+    cell_height: f64,
+) -> Vec<Vec<Cell>> {
+    let width = ((canvas.client_width() as f64) / cell_width).floor().max(1.0) as usize;
+    let height = ((canvas.client_height() as f64) / cell_height)
+        .floor()
+        .max(1.0) as usize;
+    vec![vec![Cell::default(); width]; height]
 }
 
 /// Returns the document object from the window.
@@ -244,11 +251,6 @@ pub(crate) fn get_document() -> Result<Document, Error> {
 /// Returns the window object.
 pub(crate) fn get_window() -> Result<Window, Error> {
     window().ok_or(Error::UnableToRetrieveWindow)
-}
-
-/// Returns the device pixel ratio from the window.
-pub(crate) fn get_device_pixel_ratio() -> f32 {
-    get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32
 }
 
 /// Returns an element by its ID or the body element if no ID is provided.
@@ -287,6 +289,10 @@ pub(crate) fn create_canvas_in_element(
         .expect("Unable to cast canvas element");
     canvas.set_width(width);
     canvas.set_height(height);
+    canvas.set_attribute(
+        "style",
+        "display: block; width: 100%; height: 100%; touch-action: none; image-rendering: pixelated; image-rendering: crisp-edges; image-rendering: -moz-crisp-edges;",
+    )?;
 
     parent.append_child(&element)?;
 

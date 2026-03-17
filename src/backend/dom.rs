@@ -187,11 +187,14 @@ impl DomBackend {
         let pre = document.create_element("pre")?;
         pre.set_attribute(
             "style",
-            "margin: 0; padding: 0; border: 0; line-height: normal;",
+            "margin: 0; padding: 0; border: 0; line-height: 1; font: 16px 'JetBrains Mono', monospace;",
         )?;
         let span = document.create_element("span")?;
         span.set_inner_html("\u{2588}");
-        span.set_attribute("style", "display: inline-block; width: 1ch;")?;
+        span.set_attribute(
+            "style",
+            "display: inline-block; width: 1ch; line-height: 1; vertical-align: top; box-sizing: border-box; font: 16px 'JetBrains Mono', monospace;",
+        )?;
         pre.append_child(&span)?;
         parent.append_child(&pre)?;
 
@@ -251,7 +254,10 @@ impl DomBackend {
 
             // Create a <pre> element for the line
             let pre = self.document.create_element("pre")?;
-            let line_height = format!("height: {}px;", self.cell_size.1);
+            let line_height = format!(
+                "margin: 0; padding: 0; border: 0; height: {}px; line-height: 1;",
+                self.cell_size.1
+            );
             pre.set_attribute("style", &line_height)?;
 
             // Append all elements (spans and anchors) to the <pre>
@@ -268,8 +274,7 @@ impl DomBackend {
 
 impl CellSized for DomBackend {
     fn cell_size_px(&self) -> (f32, f32) {
-        let dpr = get_device_pixel_ratio();
-        (self.cell_size.0 as f32 * dpr, self.cell_size.1 as f32 * dpr)
+        (self.cell_size.0 as f32, self.cell_size.1 as f32)
     }
 
     fn cell_size_css_px(&self) -> (f32, f32) {
@@ -400,11 +405,7 @@ impl Backend for DomBackend {
     }
 
     fn size(&self) -> IoResult<Size> {
-        let size = get_size();
-        Ok(Size::new(
-            size.width.saturating_sub(1),
-            size.height.saturating_sub(1),
-        ))
+        Ok(self.size)
     }
 
     fn window_size(&mut self) -> IoResult<WindowSize> {
@@ -448,16 +449,12 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_mouse_events();
 
-        // Configure coordinate translation for DOM backend
-        // Cell dimensions are derived from element dimensions / grid size
         let config = MouseConfig::new(self.size.width, self.size.height);
-
-        // Use the grid element for coordinate calculation
-        let element = self.grid.clone();
+        let element = self.grid_parent.clone();
 
         // Create mouse event callback
         let mouse_callback = EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             MOUSE_EVENT_TYPES,
             move |event: web_sys::MouseEvent| {
                 let mouse_event = create_mouse_event(&event, &element, &config);
@@ -481,11 +478,12 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_key_events();
 
-        // Make the grid element focusable so it can receive key events
-        self.grid.set_attribute("tabindex", "0")?;
+        // Make the grid parent focusable so it keeps receiving key events
+        // even when the grid node is recreated on resize.
+        self.grid_parent.set_attribute("tabindex", "0")?;
 
         self.key_callback = Some(EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             KEY_EVENT_TYPES,
             move |event: web_sys::KeyboardEvent| {
                 callback(event.into());

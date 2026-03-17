@@ -85,8 +85,10 @@ pub(super) struct MouseConfig {
     pub grid_width: u16,
     /// Terminal grid height in characters.
     pub grid_height: u16,
-    /// Pixel offset from the element edge (e.g., canvas padding/translation).
-    pub offset: Option<f64>,
+    /// Horizontal pixel offset from the element edge (e.g., canvas translation).
+    pub offset_x: Option<f64>,
+    /// Vertical pixel offset from the element edge (e.g., canvas translation).
+    pub offset_y: Option<f64>,
     /// Cell dimensions in pixels (width, height).
     /// If provided, used for pixel-perfect coordinate calculation.
     pub cell_dimensions: Option<(f64, f64)>,
@@ -98,14 +100,16 @@ impl MouseConfig {
         Self {
             grid_width,
             grid_height,
-            offset: None,
+            offset_x: None,
+            offset_y: None,
             cell_dimensions: None,
         }
     }
 
-    /// Sets the pixel offset from the element edge.
-    pub fn with_offset(mut self, offset: f64) -> Self {
-        self.offset = Some(offset);
+    /// Sets independent pixel offsets from the element edge.
+    pub fn with_offsets(mut self, offset_x: f64, offset_y: f64) -> Self {
+        self.offset_x = Some(offset_x);
+        self.offset_y = Some(offset_y);
         self
     }
 
@@ -142,9 +146,10 @@ fn mouse_to_grid_coords(
     let rect = element.get_bounding_client_rect();
 
     // Calculate relative position within element
-    let offset = config.offset.unwrap_or(0.0);
-    let relative_x = (event.client_x() as f64 - rect.left() - offset).max(0.0);
-    let relative_y = (event.client_y() as f64 - rect.top() - offset).max(0.0);
+    let offset_x = config.offset_x.unwrap_or(0.0);
+    let offset_y = config.offset_y.unwrap_or(0.0);
+    let relative_x = (event.client_x() as f64 - rect.left() - offset_x).max(0.0);
+    let relative_y = (event.client_y() as f64 - rect.top() - offset_y).max(0.0);
 
     // Calculate drawable area
     let (drawable_width, drawable_height) = match config.cell_dimensions {
@@ -152,7 +157,10 @@ fn mouse_to_grid_coords(
             config.grid_width as f64 * cw,
             config.grid_height as f64 * ch,
         ),
-        None => (rect.width() - 2.0 * offset, rect.height() - 2.0 * offset),
+        None => (
+            rect.width() - offset_x.max(0.0) * 2.0,
+            rect.height() - offset_y.max(0.0) * 2.0,
+        ),
     };
 
     // Avoid division by zero
@@ -217,7 +225,8 @@ mod tests {
 
         assert_eq!(config.grid_width, 80);
         assert_eq!(config.grid_height, 24);
-        assert_eq!(config.offset, Some(5.0));
+        assert_eq!(config.offset_x, Some(5.0));
+        assert_eq!(config.offset_y, Some(5.0));
         assert_eq!(config.cell_dimensions, Some((10.0, 19.0)));
     }
 }

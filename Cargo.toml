@@ -14,6 +14,7 @@ edition = "2021"
 
 [dependencies]
 web-sys = { version = "0.3.81", features = [
+    'Clipboard',
     'console',
     'CanvasRenderingContext2d',
     'Document',
@@ -28,6 +29,7 @@ web-sys = { version = "0.3.81", features = [
     'Node',
     'Performance',
     'Screen',
+    'TextMetrics',
     'WebGl2RenderingContext',
     'WebGlBuffer',
     'WebGlProgram',

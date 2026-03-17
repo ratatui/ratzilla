@@ -1,5 +1,6 @@
 use crate::{
     backend::{
+        cell_sized::CellSized,
         color::to_rgb,
         event_callback::{EventCallback, KEY_EVENT_TYPES},
         utils::*,
@@ -29,7 +30,6 @@ use std::{
 };
 use web_sys::{wasm_bindgen::JsCast, Element};
 
-use crate::backend::cell_sized::CellSized;
 /// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
 
@@ -910,7 +910,6 @@ impl WebEventHandler for WebGl2Backend {
         )?;
 
         self._user_mouse_handler = Some(mouse_handler);
-
         Ok(())
     }
 
