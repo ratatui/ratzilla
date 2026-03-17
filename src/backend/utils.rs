@@ -1,7 +1,4 @@
-use crate::{
-    backend::color::ansi_to_rgb,
-    error::Error,
-};
+use crate::{backend::color::ansi_to_rgb, error::Error};
 use compact_str::{format_compact, CompactString};
 use ratatui::{
     buffer::Cell,
@@ -14,6 +11,40 @@ use web_sys::{
 };
 
 pub(crate) const TERMINAL_FONT: &str = "16px 'Iosevka', monospace";
+
+fn terminal_font_style() -> &'static str {
+    "font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+}
+
+pub(crate) fn terminal_grid_style(enable_selection: bool) -> CompactString {
+    let mut style = format_compact!(
+        "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; {}",
+        terminal_font_style()
+    );
+    if enable_selection {
+        style.push_str(
+            " user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;",
+        );
+    }
+    style
+}
+
+pub(crate) fn terminal_probe_style() -> CompactString {
+    format_compact!(
+        "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; {}",
+        terminal_font_style()
+    )
+}
+
+pub(crate) fn terminal_probe_row_style() -> &'static str {
+    "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;"
+}
+
+pub(crate) fn terminal_probe_sample_style() -> CompactString {
+    format_compact!(
+        "display: block; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+    )
+}
 
 pub struct CssAttribute {
     pub field: &'static str,
@@ -111,7 +142,10 @@ pub(crate) fn get_cell_style_as_css(cell: &Cell, cell_size: (f64, f64)) -> Strin
         ""
     };
 
-    let sizing = terminal_cell_box_style(cell.symbol().width().max(1) as f64 * cell_size.0, cell_size.1);
+    let sizing = terminal_cell_box_style(
+        cell.symbol().width().max(1) as f64 * cell_size.0,
+        cell_size.1,
+    );
 
     format!("{fg_style} {bg_style} {modifier_style} {braille_style} {sizing}")
 }
@@ -257,6 +291,11 @@ pub(crate) fn get_document() -> Result<Document, Error> {
 /// Returns the window object.
 pub(crate) fn get_window() -> Result<Window, Error> {
     window().ok_or(Error::UnableToRetrieveWindow)
+}
+
+/// Returns the device pixel ratio from the window.
+pub(crate) fn get_device_pixel_ratio() -> f32 {
+    get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32
 }
 
 /// Returns an element by its ID or the body element if no ID is provided.

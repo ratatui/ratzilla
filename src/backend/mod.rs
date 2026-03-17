@@ -23,7 +23,7 @@
 //! | **60fps on large terminals** | ✗          | ✗             | ✓              |
 //! | **Memory Usage**             | Highest    | Medium        | Lowest         |
 //! | **Hyperlinks**               | ✗          | ✗             | ✓              |
-//! | **Text Selection**           | Linear     | ✗             | Linear/Block   |
+//! | **Text Selection**           | Linear     | Linear/Block  | Linear/Block   |
 //! | **Unicode/Emoji Support**    | Full       | Limited²      | Full¹          |
 //! | **Dynamic Characters**       | ✓          | ✓             | ✓¹             |
 //! | **Font Variants**            | ✓          | Regular only  | ✓              |
@@ -69,6 +69,9 @@ pub mod dom;
 
 /// WebGL2 backend.
 pub mod webgl2;
+
+/// Shared selection types.
+pub mod selection;
 
 /// Color handling.
 mod color;
