@@ -37,9 +37,6 @@ const DEFAULT_CELL_WIDTH: f64 = 10.0;
 /// Default height of a single cell when measurement fails.
 const DEFAULT_CELL_HEIGHT: f64 = 19.0;
 
-/// Padding offset used by the canvas backend.
-const CANVAS_PADDING: f64 = 0.0;
-
 /// Mouse selection mode for the canvas backend.
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub enum SelectionMode {
@@ -184,7 +181,7 @@ impl Canvas {
     }
 
     fn configure_text_context(context: &web_sys::CanvasRenderingContext2d) {
-        context.set_font("16px 'Iosevka', monospace");
+        context.set_font(TERMINAL_FONT);
         context.set_text_align("left");
         context.set_text_baseline("alphabetic");
         context.set_image_smoothing_enabled(false);
@@ -263,6 +260,14 @@ pub struct CanvasBackend {
 type MouseCallbackState = EventCallback<web_sys::MouseEvent>;
 
 impl CanvasBackend {
+    fn grid_rect(&self, x: usize, y: usize, width: usize, height: usize) -> (f64, f64, f64, f64) {
+        let left = (x as f64 * self.cell_width).floor();
+        let top = (y as f64 * self.cell_height).floor();
+        let right = ((x + width) as f64 * self.cell_width).ceil();
+        let bottom = ((y + height) as f64 * self.cell_height).ceil();
+        (left, top, (right - left).max(1.0), (bottom - top).max(1.0))
+    }
+
     fn content_draw_size(&self) -> (f64, f64) {
         let (grid_width, grid_height) = self.canvas_grid_size();
         let width = (grid_width as f64 * self.cell_width).ceil();
@@ -281,16 +286,8 @@ impl CanvasBackend {
         (offset_x, offset_y)
     }
 
-    fn cell_rect(&self, x: usize, y: usize) -> (f64, f64, f64, f64) {
-        let left = (x as f64 * self.cell_width).floor();
-        let top = (y as f64 * self.cell_height).floor();
-        let right = ((x + 1) as f64 * self.cell_width).ceil();
-        let bottom = ((y + 1) as f64 * self.cell_height).ceil();
-        (left, top, (right - left).max(1.0), (bottom - top).max(1.0))
-    }
-
     fn symbol_position(&self, x: usize, y: usize) -> (f64, f64) {
-        let (left, top, _, _) = self.cell_rect(x, y);
+        let (left, top, _, _) = self.grid_rect(x, y, 1, 1);
         (left, top + self.text_baseline_offset)
     }
 
@@ -387,10 +384,7 @@ impl CanvasBackend {
             return;
         }
 
-        if let Some(window) = web_sys::window() {
-            let clipboard = window.navigator().clipboard();
-            let _ = clipboard.write_text(&text);
-        }
+        write_text_to_clipboard(&text);
     }
 
     fn measure_text_baseline(context: &web_sys::CanvasRenderingContext2d, cell_height: f64) -> f64 {
@@ -465,14 +459,14 @@ impl CanvasBackend {
         let pre = document.create_element("pre")?;
         pre.set_attribute(
             "style",
-            "margin: 0; padding: 0; border: 0; line-height: 1; font: 16px 'Iosevka', monospace;",
+            &format!("margin: 0; padding: 0; border: 0; line-height: 1; font: {TERMINAL_FONT};"),
         )?;
 
         let span = document.create_element("span")?;
         span.set_inner_html("\u{2588}");
         span.set_attribute(
             "style",
-            "display: inline-block; width: 1ch; line-height: 1; font: 16px 'Iosevka', monospace;",
+            &format!("display: inline-block; width: 1ch; line-height: 1; font: {TERMINAL_FONT};"),
         )?;
 
         pre.append_child(&span)?;
@@ -586,7 +580,7 @@ impl CanvasBackend {
         let (offset_x, offset_y) = self.content_offset();
         self.canvas
             .frame_context
-            .translate(CANVAS_PADDING + offset_x, CANVAS_PADDING + offset_y)?;
+            .translate(offset_x, offset_y)?;
 
         self.draw_background()?;
         self.draw_selection()?;
@@ -598,7 +592,7 @@ impl CanvasBackend {
 
         self.canvas
             .frame_context
-            .translate(-(CANVAS_PADDING + offset_x), -(CANVAS_PADDING + offset_y))?;
+            .translate(-offset_x, -offset_y)?;
         self.present()?;
         Ok(())
     }
@@ -625,13 +619,10 @@ impl CanvasBackend {
                 continue;
             }
 
-            let start_x = (start as f64 * self.cell_width).floor();
-            let start_y = (row_idx as f64 * self.cell_height).floor();
-            let end_x = (end as f64 * self.cell_width).ceil();
-            let end_y = ((row_idx + 1) as f64 * self.cell_height).ceil();
+            let (start_x, start_y, width, height) = self.grid_rect(start, row_idx, end - start, 1);
             self.canvas
                 .frame_context
-                .fill_rect(start_x, start_y, end_x - start_x, end_y - start_y);
+                .fill_rect(start_x, start_y, width, height);
         }
 
         self.canvas.frame_context.restore();
@@ -693,15 +684,17 @@ impl CanvasBackend {
 
         let draw_region = |(rect, color): (Rect, Color)| {
             let color = get_canvas_color(color, self.canvas.background_color);
-            let start_x = (rect.x as f64 * self.cell_width).floor();
-            let start_y = (rect.y as f64 * self.cell_height).floor();
-            let end_x = ((rect.x + rect.width) as f64 * self.cell_width).ceil();
-            let end_y = ((rect.y + rect.height) as f64 * self.cell_height).ceil();
+            let (start_x, start_y, width, height) = self.grid_rect(
+                rect.x as usize,
+                rect.y as usize,
+                rect.width as usize,
+                rect.height as usize,
+            );
 
             self.canvas.frame_context.set_fill_style_str(&color);
             self.canvas
                 .frame_context
-                .fill_rect(start_x, start_y, end_x - start_x, end_y - start_y);
+                .fill_rect(start_x, start_y, width, height);
         };
 
         for (y, line) in self.buffer.iter().enumerate() {
@@ -924,10 +917,7 @@ impl WebEventHandler for CanvasBackend {
 
         // Configure coordinate translation for canvas backend
         let config = MouseConfig::new(grid_width, grid_height)
-            .with_offsets(
-                CANVAS_PADDING + self.content_offset().0,
-                CANVAS_PADDING + self.content_offset().1,
-            )
+            .with_offsets(self.content_offset().0, self.content_offset().1)
             .with_cell_dimensions(self.cell_width, self.cell_height);
 
         let element: web_sys::Element = self.canvas.inner.clone().into();

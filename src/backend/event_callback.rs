@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn test_mouse_config_builder() {
         let config = MouseConfig::new(80, 24)
-            .with_offset(5.0)
+            .with_offsets(5.0, 5.0)
             .with_cell_dimensions(10.0, 19.0);
 
         assert_eq!(config.grid_width, 80);

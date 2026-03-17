@@ -1,12 +1,10 @@
 use crate::{
     backend::color::ansi_to_rgb,
     error::Error,
-    utils::{get_screen_size, get_window_size, is_mobile},
 };
 use compact_str::{format_compact, CompactString};
 use ratatui::{
     buffer::Cell,
-    layout::Size,
     style::{Color, Modifier},
 };
 use unicode_width::UnicodeWidthStr;
@@ -15,9 +13,31 @@ use web_sys::{
     window, Document, Element, HtmlCanvasElement, Window,
 };
 
+pub(crate) const TERMINAL_FONT: &str = "16px 'Iosevka', monospace";
+pub(crate) const TERMINAL_FONT_CSS: &str = "font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
+
 pub struct CssAttribute {
     pub field: &'static str,
     pub value: Option<&'static str>,
+}
+
+fn terminal_cell_box_style(width: f64, cell_height: f64) -> CompactString {
+    format_compact!(
+        "display: block; flex: 0 0 {width}px; width: {width}px; min-width: {width}px; max-width: {width}px; height: {cell_height}px; min-height: {cell_height}px; max-height: {cell_height}px; line-height: {cell_height}px; margin: 0; padding: 0; border: 0; vertical-align: top; box-sizing: border-box; white-space: pre; overflow: hidden; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+    )
+}
+
+pub(crate) fn terminal_row_style(cell_height: f64) -> CompactString {
+    format_compact!(
+        "display: flex; flex: 0 0 {cell_height}px; width: 100%; height: {cell_height}px; min-height: {cell_height}px; max-height: {cell_height}px; overflow: hidden; margin: 0; padding: 0; border: 0; line-height: {cell_height}px; white-space: pre; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+    )
+}
+
+pub(crate) fn write_text_to_clipboard(text: &str) {
+    if let Some(window) = window() {
+        let clipboard = window.navigator().clipboard();
+        let _ = clipboard.write_text(text);
+    }
 }
 
 /// Creates a new `<span>` element with the given cell.
@@ -33,23 +53,6 @@ pub(crate) fn create_span(
     let style = get_cell_style_as_css(cell, cell_size);
     span.set_attribute("style", &style)?;
     Ok(span)
-}
-
-/// Creates a new `<a>` element with the given cells.
-#[allow(dead_code)]
-pub(crate) fn create_anchor(
-    document: &Document,
-    cells: &[Cell],
-    cell_size: (f64, f64),
-) -> Result<Element, Error> {
-    let anchor = document.create_element("a")?;
-    anchor.set_class_name("ratzilla-dom-cell ratzilla-dom-link");
-    anchor.set_attribute(
-        "href",
-        &cells.iter().map(|c| c.symbol()).collect::<String>(),
-    )?;
-    anchor.set_attribute("style", &get_cell_style_as_css(&cells[0], cell_size))?;
-    Ok(anchor)
 }
 
 /// Converts a cell to a CSS style.
@@ -109,14 +112,7 @@ pub(crate) fn get_cell_style_as_css(cell: &Cell, cell_size: (f64, f64)) -> Strin
         ""
     };
 
-    let width = cell.symbol().width().max(1) as f64 * cell_size.0;
-    let sizing = format!(
-        "display: block; flex: 0 0 {width}px; width: {width}px; min-width: {width}px; max-width: {width}px; height: {}px; min-height: {}px; max-height: {}px; line-height: {}px; margin: 0; padding: 0; border: 0; vertical-align: top; box-sizing: border-box; white-space: pre; overflow: hidden; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
-        cell_size.1,
-        cell_size.1,
-        cell_size.1,
-        cell_size.1
-    );
+    let sizing = terminal_cell_box_style(cell.symbol().width().max(1) as f64 * cell_size.0, cell_size.1);
 
     format!("{fg_style} {bg_style} {modifier_style} {braille_style} {sizing}")
 }
@@ -124,11 +120,8 @@ pub(crate) fn get_cell_style_as_css(cell: &Cell, cell_size: (f64, f64)) -> Strin
 /// CSS style used for the trailing placeholder cell after a full-width glyph.
 pub(crate) fn get_hidden_cell_style_as_css(cell_size: (f64, f64)) -> String {
     format!(
-        "display: block; flex: 0 0 0px; width: 0; min-width: 0; max-width: 0; height: {}px; min-height: {}px; max-height: {}px; line-height: {}px; margin: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden; box-sizing: border-box; white-space: pre; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
-        cell_size.1,
-        cell_size.1,
-        cell_size.1,
-        cell_size.1
+        "{} visibility: hidden;",
+        terminal_cell_box_style(0.0, cell_size.1)
     )
 }
 
@@ -238,22 +231,6 @@ pub(crate) fn get_raw_window_size() -> (u16, u16) {
 pub(crate) fn get_raw_screen_size() -> (i32, i32) {
     let s = web_sys::window().unwrap().screen().unwrap();
     (s.width().unwrap(), s.height().unwrap())
-}
-
-#[allow(dead_code)]
-/// Returns a buffer based on the screen size.
-pub(crate) fn get_sized_buffer() -> Vec<Vec<Cell>> {
-    let size = get_size();
-    vec![vec![Cell::default(); size.width as usize]; size.height as usize]
-}
-
-/// Returns a buffer size based on the screen size.
-pub(crate) fn get_size() -> Size {
-    if is_mobile() {
-        get_screen_size()
-    } else {
-        get_window_size()
-    }
 }
 
 /// Returns a buffer based on the canvas size.

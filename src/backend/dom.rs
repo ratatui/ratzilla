@@ -30,6 +30,10 @@ use crate::{
 
 /// Default cell size used as a fallback when measurement fails.
 const DEFAULT_CELL_SIZE: (f64, f64) = (10.0, 20.0);
+const PROBE_ROW_STYLE: &str =
+    "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;";
+const PROBE_SAMPLE_STYLE: &str =
+    "display: block; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
 
 /// Options for the [`DomBackend`].
 #[derive(Debug, Default)]
@@ -138,6 +142,24 @@ impl std::fmt::Debug for DomBackend {
 }
 
 impl DomBackend {
+    fn grid_style(mouse_selection: bool) -> String {
+        let mut style = format!(
+            "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; {TERMINAL_FONT_CSS}"
+        );
+        if mouse_selection {
+            style.push_str(
+                " user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;",
+            );
+        }
+        style
+    }
+
+    fn probe_style() -> String {
+        format!(
+            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; {TERMINAL_FONT_CSS}"
+        )
+    }
+
     /// Constructs a new [`DomBackend`].
     pub fn new() -> Result<Self, Error> {
         Self::new_with_options(DomBackendOptions::default())
@@ -208,24 +230,15 @@ impl DomBackend {
     /// `getBoundingClientRect()`, then removes the probe.
     fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
         let probe = document.create_element("div")?;
-        probe.set_attribute(
-            "style",
-            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
-        )?;
+        probe.set_attribute("style", &Self::probe_style())?;
 
         let row = document.create_element("div")?;
-        row.set_attribute(
-            "style",
-            "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;",
-        )?;
+        row.set_attribute("style", PROBE_ROW_STYLE)?;
 
         let sample = document.create_element("span")?;
         let sample_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
         sample.set_text_content(Some(sample_text));
-        sample.set_attribute(
-            "style",
-            "display: block; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
-        )?;
+        sample.set_attribute("style", PROBE_SAMPLE_STYLE)?;
 
         row.append_child(&sample)?;
         probe.append_child(&row)?;
@@ -278,26 +291,21 @@ impl DomBackend {
         config.offset_y = None;
     }
 
-    fn selected_text() -> String {
-        window()
+    fn selected_text() -> Option<String> {
+        let text: String = window()
             .and_then(|window| window.get_selection().ok().flatten())
             .map(|selection| selection.to_string().into())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        (!text.trim().is_empty()).then_some(text)
     }
 
-    fn has_selected_text() -> bool {
-        !Self::selected_text().trim().is_empty()
-    }
-
-    fn copy_selected_text_to_clipboard() {
-        let text = Self::selected_text();
-        if text.trim().is_empty() {
-            return;
-        }
-
-        if let Some(window) = window() {
-            let clipboard = window.navigator().clipboard();
-            let _ = clipboard.write_text(&text);
+    fn copy_selected_text_to_clipboard() -> bool {
+        match Self::selected_text() {
+            Some(text) => {
+                write_text_to_clipboard(&text);
+                true
+            }
+            None => false,
         }
     }
 
@@ -305,14 +313,11 @@ impl DomBackend {
     fn reset_grid(&mut self) -> Result<(), Error> {
         self.grid = self.document.create_element("div")?;
         self.grid.set_attribute("id", &self.options.grid_id())?;
-        let mut grid_style = "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;".to_string();
         if self.options.mouse_selection() {
             self.grid.set_class_name("ratzilla-dom-selection-enabled");
-            grid_style.push_str(
-                " user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;",
-            );
         }
-        self.grid.set_attribute("style", &grid_style)?;
+        self.grid
+            .set_attribute("style", &Self::grid_style(self.options.mouse_selection()))?;
         self.cells.clear();
         Ok(())
     }
@@ -334,15 +339,7 @@ impl DomBackend {
             // cannot introduce its own line box spacing between rows.
             let row = self.document.create_element("div")?;
             row.set_class_name("ratzilla-dom-row");
-            let row_style = format!(
-                "display: flex; flex: 0 0 {}px; width: 100%; height: {}px; min-height: {}px; max-height: {}px; overflow: hidden; margin: 0; padding: 0; border: 0; line-height: {}px; white-space: pre; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
-                self.cell_size.1,
-                self.cell_size.1,
-                self.cell_size.1,
-                self.cell_size.1,
-                self.cell_size.1
-            );
-            row.set_attribute("style", &row_style)?;
+            row.set_attribute("style", &terminal_row_style(self.cell_size.1))?;
 
             // Append all elements (spans and anchors) to the row.
             for elem in line_cells {
@@ -554,9 +551,8 @@ impl WebEventHandler for DomBackend {
                 if mouse_selection
                     && event.type_() == "mouseup"
                     && event.button() == 0
-                    && DomBackend::has_selected_text()
+                    && DomBackend::copy_selected_text_to_clipboard()
                 {
-                    DomBackend::copy_selected_text_to_clipboard();
                 }
 
                 let config = config.borrow();
@@ -592,9 +588,8 @@ impl WebEventHandler for DomBackend {
             move |event: web_sys::KeyboardEvent| {
                 let is_copy =
                     (event.ctrl_key() || event.meta_key()) && event.key().eq_ignore_ascii_case("c");
-                if mouse_selection && is_copy && DomBackend::has_selected_text() {
+                if mouse_selection && is_copy && DomBackend::copy_selected_text_to_clipboard() {
                     event.prevent_default();
-                    DomBackend::copy_selected_text_to_clipboard();
                     return;
                 }
                 callback(event.into());
