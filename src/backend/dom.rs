@@ -184,25 +184,36 @@ impl DomBackend {
     /// page's CSS (font-family, font-size, etc.), measures it with
     /// `getBoundingClientRect()`, then removes the probe.
     fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
-        let pre = document.create_element("pre")?;
-        pre.set_attribute(
+        let probe = document.create_element("div")?;
+        probe.set_attribute(
             "style",
-            "margin: 0; padding: 0; border: 0; line-height: 1; font: 16px 'JetBrains Mono', monospace;",
+            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
         )?;
-        let span = document.create_element("span")?;
-        span.set_inner_html("\u{2588}");
-        span.set_attribute(
+
+        let row = document.create_element("div")?;
+        row.set_attribute(
             "style",
-            "display: inline-block; width: 1ch; line-height: 1; vertical-align: top; box-sizing: border-box; font: 16px 'JetBrains Mono', monospace;",
+            "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;",
         )?;
-        pre.append_child(&span)?;
-        parent.append_child(&pre)?;
 
-        let rect = span.get_bounding_client_rect();
-        let width = rect.width();
-        let height = rect.height();
+        let sample = document.create_element("span")?;
+        let sample_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
+        sample.set_text_content(Some(sample_text));
+        sample.set_attribute(
+            "style",
+            "display: block; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+        )?;
 
-        parent.remove_child(&pre)?;
+        row.append_child(&sample)?;
+        probe.append_child(&row)?;
+        parent.append_child(&probe)?;
+
+        let sample_rect = sample.get_bounding_client_rect();
+        let row_rect = row.get_bounding_client_rect();
+        let width = sample_rect.width() / sample_text.chars().count() as f64;
+        let height = row_rect.height().max(sample_rect.height());
+
+        parent.remove_child(&probe)?;
 
         if width > 0.0 && height > 0.0 {
             Ok((width, height))
@@ -235,6 +246,10 @@ impl DomBackend {
     fn reset_grid(&mut self) -> Result<(), Error> {
         self.grid = self.document.create_element("div")?;
         self.grid.set_attribute("id", &self.options.grid_id())?;
+        self.grid.set_attribute(
+            "style",
+            "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+        )?;
         self.cells.clear();
         Ok(())
     }
@@ -247,26 +262,32 @@ impl DomBackend {
         for _y in 0..self.size.height {
             let mut line_cells: Vec<Element> = Vec::new();
             for _x in 0..self.size.width {
-                let span = create_span(&self.document, &Cell::default())?;
+                let span = create_span(&self.document, &Cell::default(), self.cell_size)?;
                 self.cells.push(span.clone());
                 line_cells.push(span);
             }
 
-            // Create a <pre> element for the line
-            let pre = self.document.create_element("pre")?;
-            let line_height = format!(
-                "margin: 0; padding: 0; border: 0; height: {}px; line-height: 1;",
+            // Create a row element with fixed pixel height so the browser
+            // cannot introduce its own line box spacing between rows.
+            let row = self.document.create_element("div")?;
+            row.set_class_name("ratzilla-dom-row");
+            let row_style = format!(
+                "display: flex; flex: 0 0 {}px; width: 100%; height: {}px; min-height: {}px; max-height: {}px; overflow: hidden; margin: 0; padding: 0; border: 0; line-height: {}px; white-space: pre; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+                self.cell_size.1,
+                self.cell_size.1,
+                self.cell_size.1,
+                self.cell_size.1,
                 self.cell_size.1
             );
-            pre.set_attribute("style", &line_height)?;
+            row.set_attribute("style", &row_style)?;
 
-            // Append all elements (spans and anchors) to the <pre>
+            // Append all elements (spans and anchors) to the row.
             for elem in line_cells {
-                pre.append_child(&elem)?;
+                row.append_child(&elem)?;
             }
 
-            // Append the <pre> to the grid
-            self.grid.append_child(&pre)?;
+            // Append the row to the grid.
+            self.grid.append_child(&row)?;
         }
         Ok(())
     }
@@ -325,17 +346,17 @@ impl Backend for DomBackend {
             let cell_position = (y * self.size.width + x) as usize;
             let elem = &self.cells[cell_position];
 
-            elem.set_inner_html(cell.symbol());
-            elem.set_attribute("style", &get_cell_style_as_css(cell))
+            elem.set_text_content(Some(cell.symbol()));
+            elem.set_attribute("style", &get_cell_style_as_css(cell, self.cell_size))
                 .map_err(Error::from)?;
 
             // don't display the next cell if a fullwidth glyph preceeds it
             if cell.symbol().len() > 1 && cell.symbol().width() == 2 {
                 if (cell_position + 1) < self.cells.len() {
                     let next_elem = &self.cells[cell_position + 1];
-                    next_elem.set_inner_html("");
+                    next_elem.set_text_content(Some(""));
                     next_elem
-                        .set_attribute("style", &get_cell_style_as_css(&Cell::new("")))
+                        .set_attribute("style", &get_hidden_cell_style_as_css(self.cell_size))
                         .map_err(Error::from)?;
                 }
             }
@@ -449,7 +470,8 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_mouse_events();
 
-        let config = MouseConfig::new(self.size.width, self.size.height);
+        let config = MouseConfig::new(self.size.width, self.size.height)
+            .with_cell_dimensions(self.cell_size.0, self.cell_size.1);
         let element = self.grid_parent.clone();
 
         // Create mouse event callback

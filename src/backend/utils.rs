@@ -21,29 +21,39 @@ pub struct CssAttribute {
 }
 
 /// Creates a new `<span>` element with the given cell.
-pub(crate) fn create_span(document: &Document, cell: &Cell) -> Result<Element, Error> {
+pub(crate) fn create_span(
+    document: &Document,
+    cell: &Cell,
+    cell_size: (f64, f64),
+) -> Result<Element, Error> {
     let span = document.create_element("span")?;
-    span.set_inner_html(cell.symbol());
+    span.set_class_name("ratzilla-dom-cell");
+    span.set_text_content(Some(cell.symbol()));
 
-    let style = get_cell_style_as_css(cell);
+    let style = get_cell_style_as_css(cell, cell_size);
     span.set_attribute("style", &style)?;
     Ok(span)
 }
 
 /// Creates a new `<a>` element with the given cells.
 #[allow(dead_code)]
-pub(crate) fn create_anchor(document: &Document, cells: &[Cell]) -> Result<Element, Error> {
+pub(crate) fn create_anchor(
+    document: &Document,
+    cells: &[Cell],
+    cell_size: (f64, f64),
+) -> Result<Element, Error> {
     let anchor = document.create_element("a")?;
+    anchor.set_class_name("ratzilla-dom-cell ratzilla-dom-link");
     anchor.set_attribute(
         "href",
         &cells.iter().map(|c| c.symbol()).collect::<String>(),
     )?;
-    anchor.set_attribute("style", &get_cell_style_as_css(&cells[0]))?;
+    anchor.set_attribute("style", &get_cell_style_as_css(&cells[0], cell_size))?;
     Ok(anchor)
 }
 
 /// Converts a cell to a CSS style.
-pub(crate) fn get_cell_style_as_css(cell: &Cell) -> String {
+pub(crate) fn get_cell_style_as_css(cell: &Cell, cell_size: (f64, f64)) -> String {
     let mut fg = ansi_to_rgb(cell.fg);
     let mut bg = ansi_to_rgb(cell.bg);
 
@@ -99,9 +109,27 @@ pub(crate) fn get_cell_style_as_css(cell: &Cell) -> String {
         ""
     };
 
-    let sizing = format!("display: inline-block; width: {}ch;", cell.symbol().width());
+    let width = cell.symbol().width().max(1) as f64 * cell_size.0;
+    let sizing = format!(
+        "display: block; flex: 0 0 {width}px; width: {width}px; min-width: {width}px; max-width: {width}px; height: {}px; min-height: {}px; max-height: {}px; line-height: {}px; margin: 0; padding: 0; border: 0; vertical-align: top; box-sizing: border-box; white-space: pre; overflow: hidden; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+        cell_size.1,
+        cell_size.1,
+        cell_size.1,
+        cell_size.1
+    );
 
     format!("{fg_style} {bg_style} {modifier_style} {braille_style} {sizing}")
+}
+
+/// CSS style used for the trailing placeholder cell after a full-width glyph.
+pub(crate) fn get_hidden_cell_style_as_css(cell_size: (f64, f64)) -> String {
+    format!(
+        "display: block; flex: 0 0 0px; width: 0; min-width: 0; max-width: 0; height: {}px; min-height: {}px; max-height: {}px; line-height: {}px; margin: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden; box-sizing: border-box; white-space: pre; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+        cell_size.1,
+        cell_size.1,
+        cell_size.1,
+        cell_size.1
+    )
 }
 
 /// Parse an inline CSS style string into a Vec of (property, value) pairs.
@@ -234,7 +262,9 @@ pub(crate) fn get_sized_buffer_from_canvas(
     cell_width: f64,
     cell_height: f64,
 ) -> Vec<Vec<Cell>> {
-    let width = ((canvas.client_width() as f64) / cell_width).floor().max(1.0) as usize;
+    let width = ((canvas.client_width() as f64) / cell_width)
+        .floor()
+        .max(1.0) as usize;
     let height = ((canvas.client_height() as f64) / cell_height)
         .floor()
         .max(1.0) as usize;

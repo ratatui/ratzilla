@@ -276,9 +276,8 @@ impl CanvasBackend {
         // share exact edges instead of landing on half-pixel seams.
         let offset_x =
             (((self.canvas.inner.client_width() as f64 - content_width) / 2.0).max(0.0)).round();
-        let offset_y = (((self.canvas.inner.client_height() as f64 - content_height) / 2.0)
-            .max(0.0))
-        .round();
+        let offset_y =
+            (((self.canvas.inner.client_height() as f64 - content_height) / 2.0).max(0.0)).round();
         (offset_x, offset_y)
     }
 
@@ -315,13 +314,12 @@ impl CanvasBackend {
 
         match mode {
             SelectionMode::Linear => {
-                let (start, end) = if (range.anchor.row, range.anchor.col)
-                    <= (range.focus.row, range.focus.col)
-                {
-                    (range.anchor, range.focus)
-                } else {
-                    (range.focus, range.anchor)
-                };
+                let (start, end) =
+                    if (range.anchor.row, range.anchor.col) <= (range.focus.row, range.focus.col) {
+                        (range.anchor, range.focus)
+                    } else {
+                        (range.focus, range.anchor)
+                    };
 
                 if row < start.row as usize || row > end.row as usize {
                     return None;
@@ -362,7 +360,8 @@ impl CanvasBackend {
 
         let mut lines = Vec::new();
         for (row_idx, row) in self.buffer.iter().enumerate() {
-            let Some((start, end)) = Self::selection_row_bounds(mode, range, row_idx, row.len()) else {
+            let Some((start, end)) = Self::selection_row_bounds(mode, range, row_idx, row.len())
+            else {
                 continue;
             };
 
@@ -394,10 +393,7 @@ impl CanvasBackend {
         }
     }
 
-    fn measure_text_baseline(
-        context: &web_sys::CanvasRenderingContext2d,
-        cell_height: f64,
-    ) -> f64 {
+    fn measure_text_baseline(context: &web_sys::CanvasRenderingContext2d, cell_height: f64) -> f64 {
         let metrics = context.measure_text("Mg").ok();
         let ascent = metrics
             .as_ref()
@@ -443,7 +439,9 @@ impl CanvasBackend {
             self.canvas.frame.set_width(width);
             self.canvas.frame.set_height(height);
             Canvas::configure_text_context(&self.canvas.frame_context);
-            self.canvas.display_context.set_image_smoothing_enabled(false);
+            self.canvas
+                .display_context
+                .set_image_smoothing_enabled(false);
             self.initialized = false;
         }
 
@@ -619,7 +617,8 @@ impl CanvasBackend {
             .set_fill_style_str("rgba(170, 190, 230, 0.24)");
 
         for (row_idx, row) in self.buffer.iter().enumerate() {
-            let Some((start, end)) = Self::selection_row_bounds(mode, range, row_idx, row.len()) else {
+            let Some((start, end)) = Self::selection_row_bounds(mode, range, row_idx, row.len())
+            else {
                 continue;
             };
             if start >= end {
