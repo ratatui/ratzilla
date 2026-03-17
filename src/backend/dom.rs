@@ -30,6 +30,12 @@ use crate::{
 
 /// Default cell size used as a fallback when measurement fails.
 const DEFAULT_CELL_SIZE: (f64, f64) = (10.0, 20.0);
+const GRID_STYLE: &str =
+    "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
+const GRID_SELECTION_STYLE: &str =
+    "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;";
+const PROBE_STYLE: &str =
+    "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
 const PROBE_ROW_STYLE: &str =
     "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;";
 const PROBE_SAMPLE_STYLE: &str =
@@ -142,24 +148,6 @@ impl std::fmt::Debug for DomBackend {
 }
 
 impl DomBackend {
-    fn grid_style(mouse_selection: bool) -> String {
-        let mut style = format!(
-            "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; {TERMINAL_FONT_CSS}"
-        );
-        if mouse_selection {
-            style.push_str(
-                " user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;",
-            );
-        }
-        style
-    }
-
-    fn probe_style() -> String {
-        format!(
-            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; {TERMINAL_FONT_CSS}"
-        )
-    }
-
     /// Constructs a new [`DomBackend`].
     pub fn new() -> Result<Self, Error> {
         Self::new_with_options(DomBackendOptions::default())
@@ -230,7 +218,7 @@ impl DomBackend {
     /// `getBoundingClientRect()`, then removes the probe.
     fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
         let probe = document.create_element("div")?;
-        probe.set_attribute("style", &Self::probe_style())?;
+        probe.set_attribute("style", PROBE_STYLE)?;
 
         let row = document.create_element("div")?;
         row.set_attribute("style", PROBE_ROW_STYLE)?;
@@ -292,11 +280,10 @@ impl DomBackend {
     }
 
     fn selected_text() -> Option<String> {
-        let text: String = window()
+        window()
             .and_then(|window| window.get_selection().ok().flatten())
             .map(|selection| selection.to_string().into())
-            .unwrap_or_default();
-        (!text.trim().is_empty()).then_some(text)
+            .filter(|text: &String| !text.trim().is_empty())
     }
 
     fn copy_selected_text_to_clipboard() -> bool {
@@ -317,7 +304,14 @@ impl DomBackend {
             self.grid.set_class_name("ratzilla-dom-selection-enabled");
         }
         self.grid
-            .set_attribute("style", &Self::grid_style(self.options.mouse_selection()))?;
+            .set_attribute(
+                "style",
+                if self.options.mouse_selection() {
+                    GRID_SELECTION_STYLE
+                } else {
+                    GRID_STYLE
+                },
+            )?;
         self.cells.clear();
         Ok(())
     }
@@ -548,12 +542,10 @@ impl WebEventHandler for DomBackend {
             self.grid_parent.clone(),
             MOUSE_EVENT_TYPES,
             move |event: web_sys::MouseEvent| {
-                if mouse_selection
+                let _ = mouse_selection
                     && event.type_() == "mouseup"
                     && event.button() == 0
-                    && DomBackend::copy_selected_text_to_clipboard()
-                {
-                }
+                    && DomBackend::copy_selected_text_to_clipboard();
 
                 let config = config.borrow();
                 let mouse_event = create_mouse_event(&event, &element, &config);

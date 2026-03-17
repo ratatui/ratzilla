@@ -14,7 +14,6 @@ use web_sys::{
 };
 
 pub(crate) const TERMINAL_FONT: &str = "16px 'Iosevka', monospace";
-pub(crate) const TERMINAL_FONT_CSS: &str = "font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
 
 pub struct CssAttribute {
     pub field: &'static str,
