@@ -187,7 +187,7 @@ impl DomBackend {
         let probe = document.create_element("div")?;
         probe.set_attribute(
             "style",
-            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+            "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
         )?;
 
         let row = document.create_element("div")?;
@@ -248,7 +248,7 @@ impl DomBackend {
         self.grid.set_attribute("id", &self.options.grid_id())?;
         self.grid.set_attribute(
             "style",
-            "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
+            "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;",
         )?;
         self.cells.clear();
         Ok(())

@@ -172,7 +172,7 @@ impl WebGl2BackendOptions {
     /// let options = WebGl2BackendOptions::new()
     ///     .font_atlas_config(FontAtlasConfig::dynamic(
     ///         // monospace is an implicit fallback font in browsers
-    ///         &["JetBrains Mono"],
+    ///         &["Iosevka"],
     ///         16.0
     ///     ));
     /// ```
