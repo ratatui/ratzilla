@@ -1,0 +1,9 @@
+[package]
+name = "hyperlinks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ratzilla.workspace = true
+console_error_panic_hook.workspace = true
