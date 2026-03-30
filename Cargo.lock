@@ -33,11 +33,12 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "beamterm-core"
-version = "0.18.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73e70ac4f44721725e32ca1c696dc5723993a1d744e072afeb0bfdc5c4b110b8"
+checksum = "0375f7f3df163a52a06807f2150bac9a5da1933864ed40d52dda7dcd7cfa193b"
 dependencies = [
  "beamterm-data",
+ "beamterm-unicode",
  "bitflags",
  "compact_str",
  "glow",
@@ -49,9 +50,9 @@ dependencies = [
 
 [[package]]
 name = "beamterm-data"
-version = "0.18.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6facd8893c0b6c3fc51f43e8fb1bbfa91b3e902807ea8a654ee05c4eb2a1d48"
+checksum = "f21ff1fc630079352bae9b024f85519bf1f641cf7f326623f4c0b59f7ea834fd"
 dependencies = [
  "compact_str",
  "miniz_oxide",
@@ -60,9 +61,9 @@ dependencies = [
 
 [[package]]
 name = "beamterm-renderer"
-version = "0.18.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b839bf3c4add79b4a70fc0ce3c397eb364b0f2dad2c648644bf3fd76520b5df9"
+checksum = "d8db76d04d575a0534ad5dba63acc05ccbe69597f977f11c59a612cbea199112"
 dependencies = [
  "beamterm-core",
  "beamterm-data",
@@ -76,6 +77,15 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "beamterm-unicode"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f44155933cdd0625a699c554c504aab30a571e4df68f3532fb95bf9cf53b935"
+dependencies = [
+ "unicode-width",
 ]
 
 [[package]]
