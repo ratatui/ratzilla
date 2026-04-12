@@ -249,7 +249,7 @@ Special thanks to:
 
 Lastly, thanks to [Ratatui] for providing the core UI components.
 
-[trunk]: https://trunkrs.dev
+[trunk]: https://github.com/trunk-rs/trunk
 [Ratatui]: https://ratatui.rs
 [`DomBackend`]: https://docs.rs/ratzilla/latest/ratzilla/struct.DomBackend.html
 [`CanvasBackend`]: https://docs.rs/ratzilla/latest/ratzilla/struct.CanvasBackend.html
