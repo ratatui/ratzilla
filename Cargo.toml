@@ -51,4 +51,23 @@ unicode-width = "0.2.2"
 wasm-bindgen-test = "0.3.58"
 
 [workspace]
+members = [
+    ".",
+    "examples/animations",
+    "examples/canvas_stress_test",
+    "examples/canvas_waves",
+    "examples/clipboard",
+    "examples/colors_rgb",
+    "examples/demo",
+    "examples/demo2",
+    "examples/minimal",
+    "examples/pong",
+    "examples/shared",
+    "examples/tauri",
+    "examples/text_area",
+    "examples/unicode",
+    "examples/user_input",
+    "examples/website",
+    "examples/world_map",
+]
 exclude = ["templates"]
