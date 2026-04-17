@@ -49,6 +49,3 @@ unicode-width = "0.2.2"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.58"
-
-[workspace]
-exclude = ["templates"]
