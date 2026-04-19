@@ -30,8 +30,6 @@ jobs:
           components: rustfmt
       - name: check formatting
         run: cargo fmt -- --check
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
   clippy:
     name: clippy
     runs-on: ubuntu-latest
@@ -44,10 +42,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Run clippy action
-        uses: clechasseur/rs-clippy-check@v3
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
+      - name: Run clippy action
+        uses: clechasseur/rs-clippy-check@v3
   doc:
     # run docs generation on nightly rather than stable. This enables features like
     # https://doc.rust-lang.org/beta/unstable-book/language-features/doc-cfg.html which allows an
@@ -79,11 +77,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
       # enable this ci template to run regardless of whether the lockfile is checked in or not
       - name: cargo generate-lockfile
         if: hashFiles('Cargo.lock') == ''
         run: cargo generate-lockfile
       - name: cargo test --locked
         run: cargo test --locked --all-features --all-targets
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
