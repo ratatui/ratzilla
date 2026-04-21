@@ -7,7 +7,7 @@ use crate::{
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,
-    CursorShape,
+    CellSized, CursorShape,
 };
 pub use beamterm_renderer::SelectionMode;
 use beamterm_renderer::{
@@ -29,7 +29,6 @@ use std::{
 };
 use web_sys::{wasm_bindgen::JsCast, Element};
 
-use crate::backend::cell_sized::CellSized;
 /// Re-export beamterm's atlas data type. Used by [`FontAtlasConfig::Static`].
 pub use beamterm_renderer::FontAtlasData;
 
@@ -680,8 +679,8 @@ impl WebGl2Backend {
 
 impl CellSized for WebGl2Backend {
     fn cell_size_px(&self) -> (f32, f32) {
-        let (w, h) = self.beamterm.cell_size();
-        (w as f32, h as f32)
+        let cs = self.beamterm.cell_size();
+        (cs.width as f32, cs.height as f32)
     }
 
     fn cell_size_css_px(&self) -> (f32, f32) {
@@ -747,16 +746,16 @@ impl Backend for WebGl2Backend {
     }
 
     fn size(&self) -> IoResult<Size> {
-        let (w, h) = self.beamterm.terminal_size();
-        Ok(Size::new(w, h))
+        let ts = self.beamterm.terminal_size();
+        Ok(Size::new(ts.cols, ts.rows))
     }
 
     fn window_size(&mut self) -> IoResult<WindowSize> {
-        let (cols, rows) = self.beamterm.terminal_size();
+        let ts = self.beamterm.terminal_size();
         let (w, h) = self.beamterm.canvas_size();
 
         Ok(WindowSize {
-            columns_rows: Size::new(cols, rows),
+            columns_rows: Size::new(ts.cols, ts.rows),
             pixels: Size::new(w as _, h as _),
         })
     }
