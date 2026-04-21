@@ -22,7 +22,7 @@
 //! |------------------------------|------------|---------------|----------------|
 //! | **60fps on large terminals** | ✗          | ✗             | ✓              |
 //! | **Memory Usage**             | Highest    | Medium        | Lowest         |
-//! | **Hyperlinks**               | ✗          | ✗             | ✓              |
+//! | **Hyperlinks**               | ✓          | ✗             | ✓              |
 //! | **Text Selection**           | Linear     | ✗             | Linear/Block   |
 //! | **Unicode/Emoji Support**    | Full       | Limited²      | Full¹          |
 //! | **Dynamic Characters**       | ✓          | ✓             | ✓¹             |
