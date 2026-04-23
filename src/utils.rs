@@ -26,9 +26,7 @@ pub fn open_url(url: &str, new_tab: bool) -> Result<(), Error> {
     if new_tab {
         window.open_with_url(url)?;
     } else {
-        let location = window.location();
-        location.set_href(url)?;
-        location.replace(url)?;
+        window.location().set_href(url)?;
     }
     Ok(())
 }

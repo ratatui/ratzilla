@@ -1,12 +1,7 @@
-use crate::{
-    backend::color::ansi_to_rgb,
-    error::Error,
-    utils::{get_screen_size, get_window_size, is_mobile},
-};
+use crate::{backend::color::ansi_to_rgb, error::Error};
 use compact_str::{format_compact, CompactString};
 use ratatui::{
     buffer::Cell,
-    layout::Size,
     style::{Color, Modifier},
 };
 use unicode_width::UnicodeWidthStr;
@@ -15,35 +10,49 @@ use web_sys::{
     window, Document, Element, HtmlCanvasElement, Window,
 };
 
+pub(crate) const TERMINAL_FONT: &str = "16px 'Iosevka', monospace";
+
 pub struct CssAttribute {
     pub field: &'static str,
     pub value: Option<&'static str>,
 }
 
-/// Creates a new `<span>` element with the given cell.
-pub(crate) fn create_span(document: &Document, cell: &Cell) -> Result<Element, Error> {
-    let span = document.create_element("span")?;
-    span.set_inner_html(cell.symbol());
+fn terminal_cell_box_style(width: f64, cell_height: f64) -> CompactString {
+    format_compact!(
+        "display: block; flex: 0 0 {width}px; width: {width}px; min-width: {width}px; max-width: {width}px; height: {cell_height}px; min-height: {cell_height}px; max-height: {cell_height}px; line-height: {cell_height}px; margin: 0; padding: 0; border: 0; vertical-align: top; box-sizing: border-box; white-space: pre; overflow: hidden; font-family: inherit; font-size: inherit; text-decoration: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+    )
+}
 
-    let style = get_cell_style_as_css(cell);
+pub(crate) fn terminal_row_style(cell_height: f64) -> CompactString {
+    format_compact!(
+        "display: flex; flex: 0 0 {cell_height}px; width: 100%; height: {cell_height}px; min-height: {cell_height}px; max-height: {cell_height}px; overflow: hidden; margin: 0; padding: 0; border: 0; line-height: {cell_height}px; white-space: pre; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;"
+    )
+}
+
+pub(crate) fn write_text_to_clipboard(text: &str) {
+    if let Some(window) = window() {
+        let clipboard = window.navigator().clipboard();
+        let _ = clipboard.write_text(text);
+    }
+}
+
+/// Creates a new `<span>` element with the given cell.
+pub(crate) fn create_span(
+    document: &Document,
+    cell: &Cell,
+    cell_size: (f64, f64),
+) -> Result<Element, Error> {
+    let span = document.create_element("span")?;
+    span.set_class_name("ratzilla-dom-cell");
+    span.set_text_content(Some(cell.symbol()));
+
+    let style = get_cell_style_as_css(cell, cell_size);
     span.set_attribute("style", &style)?;
     Ok(span)
 }
 
-/// Creates a new `<a>` element with the given cells.
-#[allow(dead_code)]
-pub(crate) fn create_anchor(document: &Document, cells: &[Cell]) -> Result<Element, Error> {
-    let anchor = document.create_element("a")?;
-    anchor.set_attribute(
-        "href",
-        &cells.iter().map(|c| c.symbol()).collect::<String>(),
-    )?;
-    anchor.set_attribute("style", &get_cell_style_as_css(&cells[0]))?;
-    Ok(anchor)
-}
-
 /// Converts a cell to a CSS style.
-pub(crate) fn get_cell_style_as_css(cell: &Cell) -> String {
+pub(crate) fn get_cell_style_as_css(cell: &Cell, cell_size: (f64, f64)) -> String {
     let mut fg = ansi_to_rgb(cell.fg);
     let mut bg = ansi_to_rgb(cell.bg);
 
@@ -99,9 +108,20 @@ pub(crate) fn get_cell_style_as_css(cell: &Cell) -> String {
         ""
     };
 
-    let sizing = format!("display: inline-block; width: {}ch;", cell.symbol().width());
+    let sizing = terminal_cell_box_style(
+        cell.symbol().width().max(1) as f64 * cell_size.0,
+        cell_size.1,
+    );
 
     format!("{fg_style} {bg_style} {modifier_style} {braille_style} {sizing}")
+}
+
+/// CSS style used for the trailing placeholder cell after a full-width glyph.
+pub(crate) fn get_hidden_cell_style_as_css(cell_size: (f64, f64)) -> String {
+    format!(
+        "{} visibility: hidden;",
+        terminal_cell_box_style(0.0, cell_size.1)
+    )
 }
 
 /// Parse an inline CSS style string into a Vec of (property, value) pairs.
@@ -212,26 +232,19 @@ pub(crate) fn get_raw_screen_size() -> (i32, i32) {
     (s.width().unwrap(), s.height().unwrap())
 }
 
-/// Returns a buffer based on the screen size.
-pub(crate) fn get_sized_buffer() -> Vec<Vec<Cell>> {
-    let size = get_size();
-    vec![vec![Cell::default(); size.width as usize]; size.height as usize]
-}
-
-/// Returns a buffer size based on the screen size.
-pub(crate) fn get_size() -> Size {
-    if is_mobile() {
-        get_screen_size()
-    } else {
-        get_window_size()
-    }
-}
-
 /// Returns a buffer based on the canvas size.
-pub(crate) fn get_sized_buffer_from_canvas(canvas: &HtmlCanvasElement) -> Vec<Vec<Cell>> {
-    let width = canvas.client_width() as u16 / 10_u16;
-    let height = canvas.client_height() as u16 / 19_u16;
-    vec![vec![Cell::default(); width as usize]; height as usize]
+pub(crate) fn get_sized_buffer_from_canvas(
+    canvas: &HtmlCanvasElement,
+    cell_width: f64,
+    cell_height: f64,
+) -> Vec<Vec<Cell>> {
+    let width = ((canvas.client_width() as f64) / cell_width)
+        .floor()
+        .max(1.0) as usize;
+    let height = ((canvas.client_height() as f64) / cell_height)
+        .floor()
+        .max(1.0) as usize;
+    vec![vec![Cell::default(); width]; height]
 }
 
 /// Returns the document object from the window.
@@ -244,11 +257,6 @@ pub(crate) fn get_document() -> Result<Document, Error> {
 /// Returns the window object.
 pub(crate) fn get_window() -> Result<Window, Error> {
     window().ok_or(Error::UnableToRetrieveWindow)
-}
-
-/// Returns the device pixel ratio from the window.
-pub(crate) fn get_device_pixel_ratio() -> f32 {
-    get_window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0) as f32
 }
 
 /// Returns an element by its ID or the body element if no ID is provided.
@@ -287,6 +295,10 @@ pub(crate) fn create_canvas_in_element(
         .expect("Unable to cast canvas element");
     canvas.set_width(width);
     canvas.set_height(height);
+    canvas.set_attribute(
+        "style",
+        "display: block; width: 100%; height: 100%; touch-action: none; image-rendering: pixelated; image-rendering: crisp-edges; image-rendering: -moz-crisp-edges;",
+    )?;
 
     parent.append_child(&element)?;
 
