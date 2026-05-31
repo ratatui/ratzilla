@@ -237,6 +237,7 @@ There is a Vercel deployment template available for Ratzilla [here](https://verc
 - <https://alertangel.github.io/> - Website for AlertAngel: A device to make monitoring the Elderly a breeze. ([source](https://github.com/AlertAngel/alertangel.github.io)) (WIP)
 - <https://sdr-geo-db.vercel.app/> - SDR contact logging database ([source](https://github.com/nuts-rice/sdr_geo_db))
 - <https://kana.rezoleo.fr> - Learn Kana in a terminal fashion ([source](https://github.com/benoitlx/kanash))
+- <https://shenoi.dev/twozero48> - A 2048 game ([source](https://github.com/de-sh/twozero48))
 
 ## Acknowledgements
 
