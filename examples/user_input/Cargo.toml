@@ -7,3 +7,4 @@ publish = false
 [dependencies]
 ratzilla.workspace = true
 examples-shared.workspace = true
+critical-section.workspace = true

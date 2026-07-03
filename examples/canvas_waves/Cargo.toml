@@ -10,3 +10,4 @@ console_error_panic_hook.workspace = true
 tachyonfx.workspace = true
 web-time.workspace = true
 examples-shared.workspace = true
+critical-section.workspace = true

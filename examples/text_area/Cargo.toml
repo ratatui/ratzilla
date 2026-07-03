@@ -9,3 +9,4 @@ console_error_panic_hook.workspace = true
 ratzilla.workspace = true
 tui-textarea = { version = "0.7.0", default-features = false, features = ["ratatui"] }
 examples-shared.workspace = true
+critical-section.workspace = true
