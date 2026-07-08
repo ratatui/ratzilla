@@ -25,6 +25,7 @@ use crate::{
     error::Error,
     event::{KeyEvent, MouseEvent},
     render::WebEventHandler,
+    widgets::hyperlink_state,
     CursorShape,
 };
 
@@ -78,6 +79,10 @@ pub struct DomBackend {
     initialized: Rc<RefCell<bool>>,
     /// Cells.
     cells: Vec<Element>,
+    /// Current cell contents.
+    buffer: Vec<Cell>,
+    /// Current hyperlink targets for each cell.
+    hyperlinks: Vec<Option<std::rc::Rc<str>>>,
     /// Grid element.
     grid: Element,
     /// The parent of the grid element.
@@ -162,6 +167,8 @@ impl DomBackend {
         let mut backend = Self {
             initialized,
             cells: vec![],
+            buffer: vec![],
+            hyperlinks: vec![],
             grid: document.create_element("div")?,
             grid_parent,
             options,
@@ -225,6 +232,23 @@ impl DomBackend {
         Size::new((w / cell_size.0) as u16, (h / cell_size.1) as u16)
     }
 
+    fn render_cell(&self, index: usize) -> Result<(), Error> {
+        let cell = &self.buffer[index];
+        let elem = &self.cells[index];
+
+        elem.set_inner_html("");
+        elem.set_attribute("style", &get_cell_style_as_css(cell))?;
+
+        if let Some(url) = &self.hyperlinks[index] {
+            let anchor = create_anchor(&self.document, cell.symbol(), url)?;
+            elem.append_child(&anchor)?;
+        } else {
+            elem.set_inner_html(cell.symbol());
+        }
+
+        Ok(())
+    }
+
     /// Resize event types.
     const RESIZE_EVENT_TYPES: &[&str] = &["resize"];
 
@@ -233,6 +257,8 @@ impl DomBackend {
         self.grid = self.document.create_element("div")?;
         self.grid.set_attribute("id", &self.options.grid_id())?;
         self.cells.clear();
+        self.buffer.clear();
+        self.hyperlinks.clear();
         Ok(())
     }
 
@@ -244,8 +270,11 @@ impl DomBackend {
         for _y in 0..self.size.height {
             let mut line_cells: Vec<Element> = Vec::new();
             for _x in 0..self.size.width {
-                let span = create_span(&self.document, &Cell::default())?;
+                let cell = Cell::default();
+                let span = create_span(&self.document, &cell)?;
                 self.cells.push(span.clone());
+                self.buffer.push(cell);
+                self.hyperlinks.push(None);
                 line_cells.push(span);
             }
 
@@ -316,23 +345,48 @@ impl Backend for DomBackend {
             self.populate()?;
         }
 
+        let mut dirty_cells = vec![false; self.cells.len()];
+
         for (x, y, cell) in content {
             let cell_position = (y * self.size.width + x) as usize;
-            let elem = &self.cells[cell_position];
-
-            elem.set_inner_html(cell.symbol());
-            elem.set_attribute("style", &get_cell_style_as_css(cell))
-                .map_err(Error::from)?;
+            self.buffer[cell_position] = cell.clone();
+            dirty_cells[cell_position] = true;
 
             // don't display the next cell if a fullwidth glyph preceeds it
             if cell.symbol().len() > 1 && cell.symbol().width() == 2 {
                 if (cell_position + 1) < self.cells.len() {
-                    let next_elem = &self.cells[cell_position + 1];
-                    next_elem.set_inner_html("");
-                    next_elem
-                        .set_attribute("style", &get_cell_style_as_css(&Cell::new("")))
-                        .map_err(Error::from)?;
+                    self.buffer[cell_position + 1] = Cell::new("");
+                    dirty_cells[cell_position + 1] = true;
                 }
+            }
+        }
+
+        let mut next_hyperlinks = vec![None; self.cells.len()];
+        for region in hyperlink_state::take() {
+            let row_offset = region.y as usize * self.size.width as usize;
+            if row_offset >= next_hyperlinks.len() {
+                continue;
+            }
+            let start = row_offset + region.x as usize;
+            if start >= next_hyperlinks.len() {
+                continue;
+            }
+            let end = (start + region.width as usize).min(row_offset + self.size.width as usize);
+            for cell in &mut next_hyperlinks[start..end] {
+                *cell = Some(region.url.clone());
+            }
+        }
+
+        for (index, current) in next_hyperlinks.iter().enumerate() {
+            if self.hyperlinks[index].as_deref() != current.as_deref() {
+                dirty_cells[index] = true;
+            }
+        }
+        self.hyperlinks = next_hyperlinks;
+
+        for (index, dirty) in dirty_cells.into_iter().enumerate() {
+            if dirty {
+                self.render_cell(index)?;
             }
         }
 
@@ -396,6 +450,15 @@ impl Backend for DomBackend {
     }
 
     fn clear(&mut self) -> IoResult<()> {
+        for cell in &mut self.buffer {
+            *cell = Cell::default();
+        }
+        for link in &mut self.hyperlinks {
+            *link = None;
+        }
+        for index in 0..self.cells.len() {
+            self.render_cell(index)?;
+        }
         Ok(())
     }
 
