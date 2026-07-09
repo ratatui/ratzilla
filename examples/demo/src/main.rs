@@ -10,9 +10,9 @@ use std::{cell::RefCell, io::Result, rc::Rc};
 
 use app::App;
 use examples_shared::backend::{BackendType, MultiBackendBuilder};
-use ratzilla::event::KeyCode;
 use ratzilla::WebRenderer;
 use ratzilla::backend::webgl2::WebGl2BackendOptions;
+use ratzilla::event::KeyCode;
 
 mod app;
 
