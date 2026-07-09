@@ -30,6 +30,16 @@ use crate::{
 
 /// Default cell size used as a fallback when measurement fails.
 const DEFAULT_CELL_SIZE: (f64, f64) = (10.0, 20.0);
+const GRID_STYLE: &str =
+    "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
+const GRID_SELECTION_STYLE: &str =
+    "display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: 100%; overflow: hidden; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; user-select: text; -webkit-user-select: text; cursor: text; touch-action: auto;";
+const PROBE_STYLE: &str =
+    "position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; font-family: 'Iosevka', monospace; font-size: 16px; line-height: 1; white-space: pre; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
+const PROBE_ROW_STYLE: &str =
+    "display: flex; flex: 0 0 auto; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1;";
+const PROBE_SAMPLE_STYLE: &str =
+    "display: block; margin: 0; padding: 0; border: 0; white-space: pre; line-height: 1; font-family: inherit; font-size: inherit; letter-spacing: 0; word-spacing: 0; font-kerning: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0;";
 
 /// Options for the [`DomBackend`].
 #[derive(Debug, Default)]
@@ -38,6 +48,8 @@ pub struct DomBackendOptions {
     grid_id: Option<String>,
     /// The cursor shape.
     cursor_shape: CursorShape,
+    /// Whether native mouse text selection is enabled.
+    mouse_selection: bool,
 }
 
 impl DomBackendOptions {
@@ -46,6 +58,7 @@ impl DomBackendOptions {
         Self {
             grid_id,
             cursor_shape,
+            mouse_selection: false,
         }
     }
 
@@ -64,6 +77,17 @@ impl DomBackendOptions {
     /// Returns the [`CursorShape`].
     pub fn cursor_shape(&self) -> &CursorShape {
         &self.cursor_shape
+    }
+
+    /// Enables native mouse text selection.
+    pub fn enable_mouse_selection(mut self) -> Self {
+        self.mouse_selection = true;
+        self
+    }
+
+    /// Returns whether native mouse text selection is enabled.
+    pub fn mouse_selection(&self) -> bool {
+        self.mouse_selection
     }
 }
 
@@ -96,6 +120,8 @@ pub struct DomBackend {
     cell_size: (f64, f64),
     /// Resize event callback handler.
     _resize_callback: EventCallback<web_sys::Event>,
+    /// Shared mouse coordinate configuration.
+    mouse_config: Rc<RefCell<MouseConfig>>,
     /// Mouse event callback handler.
     mouse_callback: Option<DomMouseCallbackState>,
     /// Key event callback handler.
@@ -114,6 +140,7 @@ impl std::fmt::Debug for DomBackend {
             .field("cell_size", &self.cell_size)
             .field("cursor_position", &self.cursor_position)
             .field("resize_callback", &"...")
+            .field("mouse_config", &self.mouse_config)
             .field("mouse_callback", &self.mouse_callback.is_some())
             .field("key_callback", &self.key_callback.is_some())
             .finish()
@@ -158,6 +185,10 @@ impl DomBackend {
                 initialized_cb.replace(false);
             },
         )?;
+        let mouse_config = Rc::new(RefCell::new(
+            MouseConfig::new(size.width, size.height)
+                .with_cell_dimensions(cell_size.0, cell_size.1),
+        ));
 
         let mut backend = Self {
             initialized,
@@ -171,10 +202,12 @@ impl DomBackend {
             size,
             cell_size,
             _resize_callback: resize_callback,
+            mouse_config,
             mouse_callback: None,
             key_callback: None,
         };
         backend.reset_grid()?;
+        backend.sync_mouse_config();
         Ok(backend)
     }
 
@@ -184,22 +217,27 @@ impl DomBackend {
     /// page's CSS (font-family, font-size, etc.), measures it with
     /// `getBoundingClientRect()`, then removes the probe.
     fn measure_cell_size(document: &Document, parent: &Element) -> Result<(f64, f64), Error> {
-        let pre = document.create_element("pre")?;
-        pre.set_attribute(
-            "style",
-            "margin: 0; padding: 0; border: 0; line-height: normal;",
-        )?;
-        let span = document.create_element("span")?;
-        span.set_inner_html("\u{2588}");
-        span.set_attribute("style", "display: inline-block; width: 1ch;")?;
-        pre.append_child(&span)?;
-        parent.append_child(&pre)?;
+        let probe = document.create_element("div")?;
+        probe.set_attribute("style", PROBE_STYLE)?;
 
-        let rect = span.get_bounding_client_rect();
-        let width = rect.width();
-        let height = rect.height();
+        let row = document.create_element("div")?;
+        row.set_attribute("style", PROBE_ROW_STYLE)?;
 
-        parent.remove_child(&pre)?;
+        let sample = document.create_element("span")?;
+        let sample_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
+        sample.set_text_content(Some(sample_text));
+        sample.set_attribute("style", PROBE_SAMPLE_STYLE)?;
+
+        row.append_child(&sample)?;
+        probe.append_child(&row)?;
+        parent.append_child(&probe)?;
+
+        let sample_rect = sample.get_bounding_client_rect();
+        let row_rect = row.get_bounding_client_rect();
+        let width = sample_rect.width() / sample_text.chars().count() as f64;
+        let height = row_rect.height().max(sample_rect.height());
+
+        parent.remove_child(&probe)?;
 
         if width > 0.0 && height > 0.0 {
             Ok((width, height))
@@ -228,10 +266,60 @@ impl DomBackend {
     /// Resize event types.
     const RESIZE_EVENT_TYPES: &[&str] = &["resize"];
 
+    fn current_size(&self) -> Size {
+        Self::calculate_size(&self.grid_parent, self.cell_size)
+    }
+
+    fn sync_mouse_config(&self) {
+        let mut config = self.mouse_config.borrow_mut();
+        config.grid_width = self.size.width;
+        config.grid_height = self.size.height;
+        config.cell_dimensions = Some(self.cell_size);
+        config.offset_x = None;
+        config.offset_y = None;
+    }
+
+    fn selected_text() -> Option<String> {
+        window()
+            .and_then(|window| window.get_selection().ok().flatten())
+            .map(|selection| selection.to_string().into())
+            .filter(|text: &String| !text.trim().is_empty())
+    }
+
+    fn clear_selected_text() {
+        if let Some(selection) = window().and_then(|window| window.get_selection().ok().flatten()) {
+            let _ = selection.remove_all_ranges();
+        }
+    }
+
+    fn copy_selected_text_to_clipboard() -> bool {
+        match Self::selected_text() {
+            Some(text) => {
+                write_text_to_clipboard(&text);
+                Self::clear_selected_text();
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Reset the grid and clear the cells.
     fn reset_grid(&mut self) -> Result<(), Error> {
-        self.grid = self.document.create_element("div")?;
         self.grid.set_attribute("id", &self.options.grid_id())?;
+        if self.options.mouse_selection() {
+            self.grid.set_class_name("ratzilla-dom-selection-enabled");
+        } else {
+            self.grid.set_class_name("");
+        }
+        self.grid.set_attribute(
+            "style",
+            if self.options.mouse_selection() {
+                GRID_SELECTION_STYLE
+            } else {
+                GRID_STYLE
+            },
+        )?;
+        self.grid.set_inner_html("");
         self.cells.clear();
         Ok(())
     }
@@ -244,23 +332,24 @@ impl DomBackend {
         for _y in 0..self.size.height {
             let mut line_cells: Vec<Element> = Vec::new();
             for _x in 0..self.size.width {
-                let span = create_span(&self.document, &Cell::default())?;
+                let span = create_span(&self.document, &Cell::default(), self.cell_size)?;
                 self.cells.push(span.clone());
                 line_cells.push(span);
             }
 
-            // Create a <pre> element for the line
-            let pre = self.document.create_element("pre")?;
-            let line_height = format!("height: {}px;", self.cell_size.1);
-            pre.set_attribute("style", &line_height)?;
+            // Create a row element with fixed pixel height so the browser
+            // cannot introduce its own line box spacing between rows.
+            let row = self.document.create_element("div")?;
+            row.set_class_name("ratzilla-dom-row");
+            row.set_attribute("style", &terminal_row_style(self.cell_size.1))?;
 
-            // Append all elements (spans and anchors) to the <pre>
+            // Append all elements (spans and anchors) to the row.
             for elem in line_cells {
-                pre.append_child(&elem)?;
+                row.append_child(&elem)?;
             }
 
-            // Append the <pre> to the grid
-            self.grid.append_child(&pre)?;
+            // Append the row to the grid.
+            self.grid.append_child(&row)?;
         }
         Ok(())
     }
@@ -268,8 +357,7 @@ impl DomBackend {
 
 impl CellSized for DomBackend {
     fn cell_size_px(&self) -> (f32, f32) {
-        let dpr = get_device_pixel_ratio();
-        (self.cell_size.0 as f32 * dpr, self.cell_size.1 as f32 * dpr)
+        (self.cell_size.0 as f32, self.cell_size.1 as f32)
     }
 
     fn cell_size_css_px(&self) -> (f32, f32) {
@@ -301,36 +389,44 @@ impl Backend for DomBackend {
                 .get_element_by_id(&self.options.grid_id())
                 .is_some()
             {
-                self.grid_parent.set_inner_html("");
                 self.reset_grid()?;
 
                 // re-measure cell size and update grid dimensions
                 self.cell_size = Self::measure_cell_size(&self.document, &self.grid_parent)
                     .unwrap_or(DEFAULT_CELL_SIZE);
-                self.size = Self::calculate_size(&self.grid_parent, self.cell_size);
+                self.size = self.current_size();
+                self.sync_mouse_config();
             }
 
-            self.grid_parent
-                .append_child(&self.grid)
-                .map_err(Error::from)?;
+            if self.grid.parent_element().is_none() {
+                self.grid_parent
+                    .append_child(&self.grid)
+                    .map_err(Error::from)?;
+            }
             self.populate()?;
         }
 
         for (x, y, cell) in content {
+            if x >= self.size.width || y >= self.size.height {
+                continue;
+            }
             let cell_position = (y * self.size.width + x) as usize;
+            if cell_position >= self.cells.len() {
+                continue;
+            }
             let elem = &self.cells[cell_position];
 
-            elem.set_inner_html(cell.symbol());
-            elem.set_attribute("style", &get_cell_style_as_css(cell))
+            elem.set_text_content(Some(cell.symbol()));
+            elem.set_attribute("style", &get_cell_style_as_css(cell, self.cell_size))
                 .map_err(Error::from)?;
 
             // don't display the next cell if a fullwidth glyph preceeds it
             if cell.symbol().len() > 1 && cell.symbol().width() == 2 {
                 if (cell_position + 1) < self.cells.len() {
                     let next_elem = &self.cells[cell_position + 1];
-                    next_elem.set_inner_html("");
+                    next_elem.set_text_content(Some(""));
                     next_elem
-                        .set_attribute("style", &get_cell_style_as_css(&Cell::new("")))
+                        .set_attribute("style", &get_hidden_cell_style_as_css(self.cell_size))
                         .map_err(Error::from)?;
                 }
             }
@@ -400,19 +496,16 @@ impl Backend for DomBackend {
     }
 
     fn size(&self) -> IoResult<Size> {
-        let size = get_size();
-        Ok(Size::new(
-            size.width.saturating_sub(1),
-            size.height.saturating_sub(1),
-        ))
+        Ok(self.current_size())
     }
 
     fn window_size(&mut self) -> IoResult<WindowSize> {
+        let size = self.current_size();
         Ok(WindowSize {
-            columns_rows: self.size,
+            columns_rows: size,
             pixels: Size::new(
-                (self.size.width as f64 * self.cell_size.0) as u16,
-                (self.size.height as f64 * self.cell_size.1) as u16,
+                (size.width as f64 * self.cell_size.0) as u16,
+                (size.height as f64 * self.cell_size.1) as u16,
             ),
         })
     }
@@ -448,18 +541,22 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_mouse_events();
 
-        // Configure coordinate translation for DOM backend
-        // Cell dimensions are derived from element dimensions / grid size
-        let config = MouseConfig::new(self.size.width, self.size.height);
-
-        // Use the grid element for coordinate calculation
-        let element = self.grid.clone();
+        self.sync_mouse_config();
+        let config = self.mouse_config.clone();
+        let element = self.grid_parent.clone();
 
         // Create mouse event callback
+        let mouse_selection = self.options.mouse_selection();
         let mouse_callback = EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             MOUSE_EVENT_TYPES,
             move |event: web_sys::MouseEvent| {
+                let _ = mouse_selection
+                    && event.type_() == "mouseup"
+                    && event.button() == 0
+                    && DomBackend::copy_selected_text_to_clipboard();
+
+                let config = config.borrow();
                 let mouse_event = create_mouse_event(&event, &element, &config);
                 callback(mouse_event);
             },
@@ -481,13 +578,21 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_key_events();
 
-        // Make the grid element focusable so it can receive key events
-        self.grid.set_attribute("tabindex", "0")?;
+        // Make the grid parent focusable so it keeps receiving key events
+        // even when the grid node is recreated on resize.
+        self.grid_parent.set_attribute("tabindex", "0")?;
+        let mouse_selection = self.options.mouse_selection();
 
         self.key_callback = Some(EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             KEY_EVENT_TYPES,
             move |event: web_sys::KeyboardEvent| {
+                let is_copy =
+                    (event.ctrl_key() || event.meta_key()) && event.key().eq_ignore_ascii_case("c");
+                if mouse_selection && is_copy && DomBackend::copy_selected_text_to_clipboard() {
+                    event.prevent_default();
+                    return;
+                }
                 callback(event.into());
             },
         )?);

@@ -1,5 +1,6 @@
 use crate::{
     backend::{
+        cell_sized::CellSized,
         color::to_rgb,
         event_callback::{EventCallback, KEY_EVENT_TYPES},
         utils::*,
@@ -60,6 +61,7 @@ impl FontAtlasConfig {
 struct PendingHyperlinkEvent {
     hover: Option<(u16, u16)>,
     click: Option<(u16, u16)>,
+    reset_cursor: bool,
 }
 
 // Labels used by the Performance API
@@ -171,7 +173,7 @@ impl WebGl2BackendOptions {
     /// let options = WebGl2BackendOptions::new()
     ///     .font_atlas_config(FontAtlasConfig::dynamic(
     ///         // monospace is an implicit fallback font in browsers
-    ///         &["JetBrains Mono"],
+    ///         &["Iosevka"],
     ///         16.0
     ///     ));
     /// ```
@@ -582,6 +584,11 @@ impl WebGl2Backend {
                     }
                     MouseEventType::MouseMove => {
                         state.hover = Some((event.col, event.row));
+                        state.reset_cursor = false;
+                    }
+                    MouseEventType::MouseLeave => {
+                        state.hover = None;
+                        state.reset_cursor = true;
                     }
                     _ => return,
                 }
@@ -612,6 +619,14 @@ impl WebGl2Backend {
                         cb(&url_match.url);
                     }
                 }
+            }
+        }
+
+        if pending.reset_cursor {
+            pending.reset_cursor = false;
+            if self.cursor_over_hyperlink {
+                self.cursor_over_hyperlink = false;
+                Self::update_canvas_cursor_style(&self.beamterm.canvas(), false);
             }
         }
 
@@ -909,7 +924,6 @@ impl WebEventHandler for WebGl2Backend {
         )?;
 
         self._user_mouse_handler = Some(mouse_handler);
-
         Ok(())
     }
 
