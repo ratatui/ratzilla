@@ -212,12 +212,6 @@ pub(crate) fn get_raw_screen_size() -> (i32, i32) {
     (s.width().unwrap(), s.height().unwrap())
 }
 
-/// Returns a buffer based on the screen size.
-pub(crate) fn get_sized_buffer() -> Vec<Vec<Cell>> {
-    let size = get_size();
-    vec![vec![Cell::default(); size.width as usize]; size.height as usize]
-}
-
 /// Returns a buffer size based on the screen size.
 pub(crate) fn get_size() -> Size {
     if is_mobile() {
@@ -225,13 +219,6 @@ pub(crate) fn get_size() -> Size {
     } else {
         get_window_size()
     }
-}
-
-/// Returns a buffer based on the canvas size.
-pub(crate) fn get_sized_buffer_from_canvas(canvas: &HtmlCanvasElement) -> Vec<Vec<Cell>> {
-    let width = canvas.client_width() as u16 / 10_u16;
-    let height = canvas.client_height() as u16 / 19_u16;
-    vec![vec![Cell::default(); width as usize]; height as usize]
 }
 
 /// Returns the document object from the window.
