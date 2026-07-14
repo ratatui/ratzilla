@@ -1,0 +1,59 @@
+[build]
+# The index HTML file to drive the bundling process.
+target = "index.html"
+# Build in release mode (equivalent to --release).
+release = false
+# The output directory for all final assets.
+dist = "dist"
+# The public URL from which assets are to be served.
+public_url = "./"
+# Whether to include hash values in the output file names.
+filehash = true
+
+[watch]
+# Paths to watch for changes (beyond the build.target parent folder).
+watch = ["src"]#, "assets"]
+# Paths to ignore.
+ignore = []
+
+[serve]
+addresses = ["127.0.0.1"]
+aliases = ["rs.ratatui.bundle-wry", "localhost"]
+# The port to serve on.
+port = 8080
+# Open a browser tab once the initial build is complete.
+open = true
+# Disable auto-reload of the web app.
+no_autoreload = true
+
+[clean]
+# The output directory to clean.
+dist = "dist"
+# Whether to perform a cargo clean as well.
+cargo = false
+
+[tools]
+# Versions of tools to download if not present in the system.
+sass = "1.69.5"
+wasm_bindgen = "0.2.126"
+wasm_opt = "version_126"
+
+# --- Proxies ---
+# Proxy requests from the development server to a backend.
+[[proxy]]
+# Requests to /api/ will be proxied to the backend.
+backend = "http://localhost:9000/api/"
+# The prefix to strip from the incoming request URI before sending it to the backend.
+rewrite = "/api/"
+
+# --- Hooks ---
+# Hooks are executed as part of the Trunk pipeline.
+[[hooks]]
+stage = "pre_build"
+command = "echo"
+command_arguments = ["Starting build process..."]
+
+[[hooks]]
+stage = "build"
+command = "sh"
+command_arguments = ["-c", "echo Staging directory: $TRUNK_STAGING_DIR"]
