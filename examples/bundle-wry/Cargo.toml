@@ -1,0 +1,45 @@
+[package]
+name = "bundle-wry"
+version = "0.1.0"
+edition = "2021"
+description = "Ratzilla web and wry desktop app example"
+publish = false
+
+[package.metadata.bundle]
+name = "bundle-wry"
+identifier = "rs.ratatui.bundle-wry"
+icon = ["icons/icon.png"]
+category = "Utility"
+short_description = "ratatui-ratzilla bundle wry example"
+
+[package.metadata.bundle.bin.bundle-wry]
+name = "bundle-wry"
+identifier = "rs.ratatui.bundle-wry"
+icon = ["icons/icon.png"]
+category = "Utility"
+short_description = "bundle-wry"
+resources = ["dist"]
+
+[features]
+default = ["bundle-wry"]
+bundle-wry = ["dep:tao", "dep:wry", "dep:muda"]
+
+[dependencies]
+critical-section = { workspace = true, features = ["std"] }
+muda = { version = "0.19", optional = true }
+rand = { version = "0.9.2", default-features = false, features = ["small_rng"] }
+ratzilla = { workspace = true }
+tachyonfx = { version = "0.23.0", default-features = false, features = ["wasm"] }
+tao = { version = "0.35.3", optional = true }
+wasm-bindgen = "0.2.108"
+## web-sys = { version = "0.3.81", features = [
+##     "Window",
+##     "Document",
+##     "Element",
+##     "HtmlElement",
+##     "Location",
+##     "Url",
+##     "UrlSearchParams",
+## ], optional = true }
+web-time = "1.1.0"
+wry = { version = "0.55.1", optional = true }
