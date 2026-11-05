@@ -250,8 +250,11 @@ impl DomBackend {
     const RESIZE_EVENT_TYPES: &[&str] = &["resize"];
 
     /// Reset the grid and clear the cells.
+    ///
+    /// The grid element itself is kept, so the key and mouse listeners
+    /// attached to it keep working after a resize.
     fn reset_grid(&mut self) -> Result<(), Error> {
-        self.grid = self.document.create_element("div")?;
+        self.grid.set_inner_html("");
         self.grid.set_attribute("id", &self.options.grid_id())?;
         self.cells.clear();
         Ok(())
@@ -647,5 +650,56 @@ mod tests {
         assert_eq!(terminal.size().unwrap(), size);
         assert_ne!(row_height(), before);
         assert_eq!(row_height(), terminal.backend().cell_size_css_px().1);
+    }
+
+    /// Counts the key and mouse events that reach the backend's callbacks.
+    fn count_events(terminal: &mut Terminal<DomBackend>) -> (Rc<StdCell<u32>>, Rc<StdCell<u32>>) {
+        let keys = Rc::new(StdCell::new(0));
+        let mice = Rc::new(StdCell::new(0));
+        let backend = terminal.backend_mut();
+        backend
+            .on_key_event({
+                let keys = keys.clone();
+                move |_| keys.set(keys.get() + 1)
+            })
+            .unwrap();
+        backend
+            .on_mouse_event({
+                let mice = mice.clone();
+                move |_| mice.set(mice.get() + 1)
+            })
+            .unwrap();
+        (keys, mice)
+    }
+
+    /// Dispatches a key and a mouse event on the grid that is in the DOM.
+    fn fire_input(parent: &Element) {
+        let grid = parent.first_element_child().unwrap();
+        grid.dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
+            .unwrap();
+        grid.dispatch_event(&web_sys::MouseEvent::new("mousedown").unwrap())
+            .unwrap();
+    }
+
+    #[wasm_bindgen_test]
+    fn input_works_after_resize() {
+        let parent = sized_parent("input_works_after_resize", 300, 200);
+        let mut terminal =
+            Terminal::new(DomBackend::new_by_id("input_works_after_resize").unwrap()).unwrap();
+        let (keys, mice) = count_events(&mut terminal);
+        draw(&mut terminal);
+        fire_input(&parent);
+        assert_eq!((keys.get(), mice.get()), (1, 1));
+
+        set_parent_size(&parent, 200, 100);
+        fire_resize();
+        draw(&mut terminal);
+        fire_input(&parent);
+        assert_eq!((keys.get(), mice.get()), (2, 2));
+
+        fire_resize();
+        draw(&mut terminal);
+        fire_input(&parent);
+        assert_eq!((keys.get(), mice.get()), (3, 3));
     }
 }
