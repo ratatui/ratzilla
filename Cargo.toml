@@ -48,5 +48,6 @@ beamterm-renderer = "1"
 unicode-width = "0.2.2"
 
 [dev-dependencies]
+web-sys = { version = "0.3.81", features = ["MouseEventInit"] }
 wasm-bindgen-test = "0.3.58"
 critical-section = { version = "1.2", features = ["std"] }

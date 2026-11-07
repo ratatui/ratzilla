@@ -84,6 +84,8 @@ pub struct DomBackend {
     grid: Element,
     /// The parent of the grid element.
     grid_parent: Element,
+    /// Grid size shared with the mouse listener, so it maps clicks with the current size.
+    grid_size: Rc<StdCell<Size>>,
     /// Document.
     document: Document,
     /// Options.
@@ -185,6 +187,7 @@ impl DomBackend {
             cells: vec![],
             grid: document.create_element("div")?,
             grid_parent,
+            grid_size: Rc::new(StdCell::new(size)),
             options,
             document,
             cursor_position: None,
@@ -332,6 +335,7 @@ impl Backend for DomBackend {
                 }
             } else {
                 self.size = measured.size;
+                self.grid_size.set(measured.size);
                 self.reset_grid()?;
                 self.initialized = false;
             }
@@ -489,7 +493,8 @@ impl WebEventHandler for DomBackend {
 
         // Configure coordinate translation for DOM backend
         // Cell dimensions are derived from element dimensions / grid size
-        let config = MouseConfig::new(self.size.width, self.size.height);
+        // The size is read on each event, so clicks map correctly after a resize.
+        let grid_size = self.grid_size.clone();
 
         // Use the grid element for coordinate calculation
         let element = self.grid.clone();
@@ -499,6 +504,8 @@ impl WebEventHandler for DomBackend {
             self.grid.clone(),
             MOUSE_EVENT_TYPES,
             move |event: web_sys::MouseEvent| {
+                let size = grid_size.get();
+                let config = MouseConfig::new(size.width, size.height);
                 let mouse_event = create_mouse_event(&event, &element, &config);
                 callback(mouse_event);
             },
@@ -679,6 +686,40 @@ mod tests {
             .unwrap();
         grid.dispatch_event(&web_sys::MouseEvent::new("mousedown").unwrap())
             .unwrap();
+    }
+
+    #[wasm_bindgen_test]
+    fn mouse_uses_new_size_after_resize() {
+        let parent = sized_parent("mouse_uses_new_size_after_resize", 300, 200);
+        let mut terminal =
+            Terminal::new(DomBackend::new_by_id("mouse_uses_new_size_after_resize").unwrap())
+                .unwrap();
+        let last = Rc::new(StdCell::new((u16::MAX, u16::MAX)));
+        terminal
+            .backend_mut()
+            .on_mouse_event({
+                let last = last.clone();
+                move |e| last.set((e.col, e.row))
+            })
+            .unwrap();
+        draw(&mut terminal);
+
+        set_parent_size(&parent, 150, 100);
+        fire_resize();
+        draw(&mut terminal);
+        let size = terminal.backend().size().unwrap();
+
+        // Click the bottom-right corner of the grid.
+        let grid = parent.first_element_child().unwrap();
+        let rect = grid.get_bounding_client_rect();
+        let init = web_sys::MouseEventInit::new();
+        init.set_client_x((rect.right() - 1.0) as i32);
+        init.set_client_y((rect.bottom() - 1.0) as i32);
+        grid.dispatch_event(
+            &web_sys::MouseEvent::new_with_mouse_event_init_dict("mousedown", &init).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(last.get(), (size.width - 1, size.height - 1));
     }
 
     #[wasm_bindgen_test]
