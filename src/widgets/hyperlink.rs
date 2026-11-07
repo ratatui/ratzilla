@@ -1,10 +1,8 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::Modifier, text::Span, widgets::Widget};
+use std::{borrow::Cow, rc::Rc};
 
-/// Hyperlink modifier.
-///
-/// When added as a modifier to a style, the styled element is marked as
-/// hyperlink.
-pub(crate) const HYPERLINK_MODIFIER: Modifier = Modifier::SLOW_BLINK;
+use ratatui::{buffer::Buffer, layout::Rect, text::Span, widgets::Widget};
+
+use crate::widgets::hyperlink_state::{register, HyperlinkRegion};
 
 /// A widget that can be used to render hyperlinks.
 ///
@@ -12,13 +10,14 @@ pub(crate) const HYPERLINK_MODIFIER: Modifier = Modifier::SLOW_BLINK;
 /// use ratzilla::widgets::Hyperlink;
 ///
 /// let link = Hyperlink::new("https://ratatui.rs");
+/// let docs = Hyperlink::with_label("Ratatui", "https://ratatui.rs");
 ///
 /// // Then you can render it as usual:
 /// // frame.render_widget(link, frame.area());
 /// ```
 pub struct Hyperlink<'a> {
-    /// Line.
-    line: Span<'a>,
+    label: Span<'a>,
+    url: Rc<str>,
 }
 
 impl<'a> Hyperlink<'a> {
@@ -27,8 +26,22 @@ impl<'a> Hyperlink<'a> {
     where
         T: Into<Span<'a>>,
     {
+        let label = url.into();
         Self {
-            line: url.into().style(HYPERLINK_MODIFIER),
+            url: Rc::from(label.content.clone().into_owned()),
+            label,
+        }
+    }
+
+    /// Constructs a new [`Hyperlink`] widget with a separate label and target URL.
+    pub fn with_label<T, U>(label: T, url: U) -> Self
+    where
+        T: Into<Span<'a>>,
+        U: Into<Cow<'a, str>>,
+    {
+        Self {
+            label: label.into(),
+            url: Rc::from(url.into().into_owned()),
         }
     }
 }
@@ -38,6 +51,15 @@ impl Widget for Hyperlink<'_> {
     where
         Self: Sized,
     {
-        self.line.render(area, buf);
+        let width = self.label.width().min(area.width as usize) as u16;
+        self.label.render(area, buf);
+        if width > 0 && area.height > 0 {
+            register(HyperlinkRegion {
+                x: area.x,
+                y: area.y,
+                width,
+                url: self.url,
+            });
+        }
     }
 }

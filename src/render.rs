@@ -5,6 +5,7 @@ use web_sys::{wasm_bindgen::prelude::*, window};
 use crate::{
     error::Error,
     event::{KeyEvent, MouseEvent},
+    widgets::hyperlink_state,
 };
 
 /// Trait for rendering on the web.
@@ -72,6 +73,7 @@ where
         *callback.borrow_mut() = Some(Closure::wrap(Box::new({
             let cb = callback.clone();
             move || {
+                hyperlink_state::begin_frame();
                 self.draw(|frame| {
                     render_callback(frame);
                 })

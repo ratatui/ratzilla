@@ -30,15 +30,16 @@ pub(crate) fn create_span(document: &Document, cell: &Cell) -> Result<Element, E
     Ok(span)
 }
 
-/// Creates a new `<a>` element with the given cells.
-#[allow(dead_code)]
-pub(crate) fn create_anchor(document: &Document, cells: &[Cell]) -> Result<Element, Error> {
+/// Creates a new `<a>` element with the given symbol and URL.
+pub(crate) fn create_anchor(
+    document: &Document,
+    symbol: &str,
+    url: &str,
+) -> Result<Element, Error> {
     let anchor = document.create_element("a")?;
-    anchor.set_attribute(
-        "href",
-        &cells.iter().map(|c| c.symbol()).collect::<String>(),
-    )?;
-    anchor.set_attribute("style", &get_cell_style_as_css(&cells[0]))?;
+    anchor.set_attribute("href", url)?;
+    anchor.set_inner_html(symbol);
+    anchor.set_attribute("style", "color: inherit; text-decoration: inherit;")?;
     Ok(anchor)
 }
 

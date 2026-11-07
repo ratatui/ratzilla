@@ -8,6 +8,7 @@ members = [
     "colors_rgb",
     "demo",
     "demo2",
+    "hyperlinks",
     "minimal",
     "pong",
     "shared",
