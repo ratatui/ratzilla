@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Position, Size},
     prelude::{backend::ClearType, Backend},
 };
-use web_sys::{window, Document, Element};
+use web_sys::{wasm_bindgen::JsCast, window, Document, Element};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -84,6 +84,8 @@ pub struct DomBackend {
     grid: Element,
     /// The parent of the grid element.
     grid_parent: Element,
+    /// Grid size shared with the mouse listener, so it maps clicks with the current size.
+    grid_size: Rc<StdCell<Size>>,
     /// Document.
     document: Document,
     /// Options.
@@ -185,6 +187,7 @@ impl DomBackend {
             cells: vec![],
             grid: document.create_element("div")?,
             grid_parent,
+            grid_size: Rc::new(StdCell::new(size)),
             options,
             document,
             cursor_position: None,
@@ -250,8 +253,11 @@ impl DomBackend {
     const RESIZE_EVENT_TYPES: &[&str] = &["resize"];
 
     /// Reset the grid and clear the cells.
+    ///
+    /// The grid element itself is kept, so the key and mouse listeners
+    /// attached to it keep working after a resize.
     fn reset_grid(&mut self) -> Result<(), Error> {
-        self.grid = self.document.create_element("div")?;
+        self.grid.set_inner_html("");
         self.grid.set_attribute("id", &self.options.grid_id())?;
         self.cells.clear();
         Ok(())
@@ -329,6 +335,7 @@ impl Backend for DomBackend {
                 }
             } else {
                 self.size = measured.size;
+                self.grid_size.set(measured.size);
                 self.reset_grid()?;
                 self.initialized = false;
             }
@@ -486,7 +493,8 @@ impl WebEventHandler for DomBackend {
 
         // Configure coordinate translation for DOM backend
         // Cell dimensions are derived from element dimensions / grid size
-        let config = MouseConfig::new(self.size.width, self.size.height);
+        // The size is read on each event, so clicks map correctly after a resize.
+        let grid_size = self.grid_size.clone();
 
         // Use the grid element for coordinate calculation
         let element = self.grid.clone();
@@ -496,6 +504,8 @@ impl WebEventHandler for DomBackend {
             self.grid.clone(),
             MOUSE_EVENT_TYPES,
             move |event: web_sys::MouseEvent| {
+                let size = grid_size.get();
+                let config = MouseConfig::new(size.width, size.height);
                 let mouse_event = create_mouse_event(&event, &element, &config);
                 callback(mouse_event);
             },
@@ -517,14 +527,28 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_key_events();
 
-        // Make the grid element focusable so it can receive key events
-        self.grid.set_attribute("tabindex", "0")?;
+        // Listen on the parent, not the grid. A resize detaches the grid, and
+        // the browser then moves focus to `<body>`, so keys sent to the grid
+        // would stop arriving until the user clicks the terminal again.
+        self.grid_parent.set_attribute("tabindex", "0")?;
 
+        let parent = self.grid_parent.clone();
+        let grid = self.grid.clone();
         self.key_callback = Some(EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             KEY_EVENT_TYPES,
             move |event: web_sys::KeyboardEvent| {
-                callback(event.into());
+                // Keys bubble, so when the parent is `<body>` this would also see
+                // keys typed into unrelated inputs. Only take keys aimed at the
+                // terminal: the focused parent itself or something in the grid.
+                let target = event
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Node>().ok());
+                let for_terminal = target
+                    .is_some_and(|t| parent.is_same_node(Some(&t)) || grid.contains(Some(&t)));
+                if for_terminal {
+                    callback(event.into());
+                }
             },
         )?);
 
@@ -647,5 +671,124 @@ mod tests {
         assert_eq!(terminal.size().unwrap(), size);
         assert_ne!(row_height(), before);
         assert_eq!(row_height(), terminal.backend().cell_size_css_px().1);
+    }
+
+    /// Counts the key and mouse events that reach the backend's callbacks.
+    fn count_events(terminal: &mut Terminal<DomBackend>) -> (Rc<StdCell<u32>>, Rc<StdCell<u32>>) {
+        let keys = Rc::new(StdCell::new(0));
+        let mice = Rc::new(StdCell::new(0));
+        let backend = terminal.backend_mut();
+        backend
+            .on_key_event({
+                let keys = keys.clone();
+                move |_| keys.set(keys.get() + 1)
+            })
+            .unwrap();
+        backend
+            .on_mouse_event({
+                let mice = mice.clone();
+                move |_| mice.set(mice.get() + 1)
+            })
+            .unwrap();
+        (keys, mice)
+    }
+
+    #[wasm_bindgen_test]
+    fn mouse_maps_to_new_size_after_resize() {
+        let parent = sized_parent("mouse_maps_to_new_size_after_resize", 300, 200);
+        let mut terminal =
+            Terminal::new(DomBackend::new_by_id("mouse_maps_to_new_size_after_resize").unwrap())
+                .unwrap();
+        let last = Rc::new(StdCell::new((u16::MAX, u16::MAX)));
+        terminal
+            .backend_mut()
+            .on_mouse_event({
+                let last = last.clone();
+                move |e| last.set((e.col, e.row))
+            })
+            .unwrap();
+        draw(&mut terminal);
+
+        set_parent_size(&parent, 150, 100);
+        fire_resize();
+        draw(&mut terminal);
+        let size = terminal.backend().size().unwrap();
+
+        // Click the bottom-right corner of the grid.
+        let grid = parent.first_element_child().unwrap();
+        let rect = grid.get_bounding_client_rect();
+        let init = web_sys::MouseEventInit::new();
+        init.set_client_x((rect.right() - 1.0) as i32);
+        init.set_client_y((rect.bottom() - 1.0) as i32);
+        grid.dispatch_event(
+            &web_sys::MouseEvent::new_with_mouse_event_init_dict("mousedown", &init).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(last.get(), (size.width - 1, size.height - 1));
+    }
+
+    #[wasm_bindgen_test]
+    fn ignores_keys_typed_outside_the_terminal() {
+        let parent = sized_parent("ignores_keys_typed_outside_the_terminal", 300, 200);
+        let mut terminal = Terminal::new(
+            DomBackend::new_by_id("ignores_keys_typed_outside_the_terminal").unwrap(),
+        )
+        .unwrap();
+        let (keys, _) = count_events(&mut terminal);
+        draw(&mut terminal);
+
+        // An unrelated input inside the parent, like a form on a page that
+        // uses `<body>` as the parent.
+        let document = window().unwrap().document().unwrap();
+        let input = document.create_element("input").unwrap();
+        parent.append_child(&input).unwrap();
+        let init = web_sys::KeyboardEventInit::new();
+        init.set_bubbles(true);
+        let key =
+            || web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).unwrap();
+
+        input.dispatch_event(&key()).unwrap();
+        assert_eq!(keys.get(), 0);
+
+        let grid = parent.first_element_child().unwrap();
+        grid.dispatch_event(&key()).unwrap();
+        assert_eq!(keys.get(), 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn keys_follow_focus_after_resize() {
+        let parent = sized_parent("keys_follow_focus_after_resize", 300, 200);
+        let mut terminal =
+            Terminal::new(DomBackend::new_by_id("keys_follow_focus_after_resize").unwrap())
+                .unwrap();
+        let (keys, _) = count_events(&mut terminal);
+        draw(&mut terminal);
+        let document = window().unwrap().document().unwrap();
+        let fire_on_focused = || {
+            document
+                .active_element()
+                .unwrap()
+                .dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
+                .unwrap();
+        };
+
+        // Focus the terminal the way a user would, by clicking or tabbing to it.
+        let focusable = document
+            .query_selector("#keys_follow_focus_after_resize[tabindex], #keys_follow_focus_after_resize [tabindex]")
+            .unwrap()
+            .unwrap();
+        focusable
+            .dyn_ref::<web_sys::HtmlElement>()
+            .unwrap()
+            .focus()
+            .unwrap();
+        fire_on_focused();
+        assert_eq!(keys.get(), 1);
+
+        set_parent_size(&parent, 200, 100);
+        fire_resize();
+        draw(&mut terminal);
+        fire_on_focused();
+        assert_eq!(keys.get(), 2);
     }
 }
