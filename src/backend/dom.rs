@@ -527,11 +527,13 @@ impl WebEventHandler for DomBackend {
         // Clear any existing handlers first
         self.clear_key_events();
 
-        // Make the grid element focusable so it can receive key events
-        self.grid.set_attribute("tabindex", "0")?;
+        // Listen on the parent, not the grid. A resize detaches the grid, and
+        // the browser then moves focus to `<body>`, so keys sent to the grid
+        // would stop arriving until the user clicks the terminal again.
+        self.grid_parent.set_attribute("tabindex", "0")?;
 
         self.key_callback = Some(EventCallback::new(
-            self.grid.clone(),
+            self.grid_parent.clone(),
             KEY_EVENT_TYPES,
             move |event: web_sys::KeyboardEvent| {
                 callback(event.into());
@@ -679,11 +681,13 @@ mod tests {
         (keys, mice)
     }
 
-    /// Dispatches a key and a mouse event on the grid that is in the DOM.
+    /// Dispatches a key event on the focusable parent and a mouse event on the
+    /// grid that is in the DOM.
     fn fire_input(parent: &Element) {
-        let grid = parent.first_element_child().unwrap();
-        grid.dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
+        parent
+            .dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
             .unwrap();
+        let grid = parent.first_element_child().unwrap();
         grid.dispatch_event(&web_sys::MouseEvent::new("mousedown").unwrap())
             .unwrap();
     }
@@ -720,6 +724,43 @@ mod tests {
         )
         .unwrap();
         assert_eq!(last.get(), (size.width - 1, size.height - 1));
+    }
+
+    #[wasm_bindgen_test]
+    fn keys_reach_focused_terminal_after_resize() {
+        let parent = sized_parent("keys_reach_focused_terminal_after_resize", 300, 200);
+        let mut terminal = Terminal::new(
+            DomBackend::new_by_id("keys_reach_focused_terminal_after_resize").unwrap(),
+        )
+        .unwrap();
+        let (keys, _) = count_events(&mut terminal);
+        draw(&mut terminal);
+        let document = window().unwrap().document().unwrap();
+        let fire_on_focused = || {
+            document
+                .active_element()
+                .unwrap()
+                .dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
+                .unwrap();
+        };
+
+        // Focus the terminal the way a user would, by clicking or tabbing to it.
+        let focusable = document
+            .query_selector("#keys_reach_focused_terminal_after_resize[tabindex], #keys_reach_focused_terminal_after_resize [tabindex]")
+            .unwrap()
+            .unwrap();
+        web_sys::wasm_bindgen::JsCast::dyn_ref::<web_sys::HtmlElement>(&focusable)
+            .unwrap()
+            .focus()
+            .unwrap();
+        fire_on_focused();
+        assert_eq!(keys.get(), 1);
+
+        set_parent_size(&parent, 200, 100);
+        fire_resize();
+        draw(&mut terminal);
+        fire_on_focused();
+        assert_eq!(keys.get(), 2);
     }
 
     #[wasm_bindgen_test]
