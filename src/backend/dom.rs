@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Position, Size},
     prelude::{backend::ClearType, Backend},
 };
-use web_sys::{window, Document, Element};
+use web_sys::{wasm_bindgen::JsCast, window, Document, Element};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -532,11 +532,23 @@ impl WebEventHandler for DomBackend {
         // would stop arriving until the user clicks the terminal again.
         self.grid_parent.set_attribute("tabindex", "0")?;
 
+        let parent = self.grid_parent.clone();
+        let grid = self.grid.clone();
         self.key_callback = Some(EventCallback::new(
             self.grid_parent.clone(),
             KEY_EVENT_TYPES,
             move |event: web_sys::KeyboardEvent| {
-                callback(event.into());
+                // Keys bubble, so when the parent is `<body>` this would also see
+                // keys typed into unrelated inputs. Only take keys aimed at the
+                // terminal: the focused parent itself or something in the grid.
+                let target = event
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Node>().ok());
+                let for_terminal = target
+                    .is_some_and(|t| parent.is_same_node(Some(&t)) || grid.contains(Some(&t)));
+                if for_terminal {
+                    callback(event.into());
+                }
             },
         )?);
 
@@ -681,22 +693,11 @@ mod tests {
         (keys, mice)
     }
 
-    /// Dispatches a key event on the focusable parent and a mouse event on the
-    /// grid that is in the DOM.
-    fn fire_input(parent: &Element) {
-        parent
-            .dispatch_event(&web_sys::KeyboardEvent::new("keydown").unwrap())
-            .unwrap();
-        let grid = parent.first_element_child().unwrap();
-        grid.dispatch_event(&web_sys::MouseEvent::new("mousedown").unwrap())
-            .unwrap();
-    }
-
     #[wasm_bindgen_test]
-    fn mouse_uses_new_size_after_resize() {
-        let parent = sized_parent("mouse_uses_new_size_after_resize", 300, 200);
+    fn mouse_maps_to_new_size_after_resize() {
+        let parent = sized_parent("mouse_maps_to_new_size_after_resize", 300, 200);
         let mut terminal =
-            Terminal::new(DomBackend::new_by_id("mouse_uses_new_size_after_resize").unwrap())
+            Terminal::new(DomBackend::new_by_id("mouse_maps_to_new_size_after_resize").unwrap())
                 .unwrap();
         let last = Rc::new(StdCell::new((u16::MAX, u16::MAX)));
         terminal
@@ -727,12 +728,39 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn keys_reach_focused_terminal_after_resize() {
-        let parent = sized_parent("keys_reach_focused_terminal_after_resize", 300, 200);
+    fn ignores_keys_typed_outside_the_terminal() {
+        let parent = sized_parent("ignores_keys_typed_outside_the_terminal", 300, 200);
         let mut terminal = Terminal::new(
-            DomBackend::new_by_id("keys_reach_focused_terminal_after_resize").unwrap(),
+            DomBackend::new_by_id("ignores_keys_typed_outside_the_terminal").unwrap(),
         )
         .unwrap();
+        let (keys, _) = count_events(&mut terminal);
+        draw(&mut terminal);
+
+        // An unrelated input inside the parent, like a form on a page that
+        // uses `<body>` as the parent.
+        let document = window().unwrap().document().unwrap();
+        let input = document.create_element("input").unwrap();
+        parent.append_child(&input).unwrap();
+        let init = web_sys::KeyboardEventInit::new();
+        init.set_bubbles(true);
+        let key =
+            || web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).unwrap();
+
+        input.dispatch_event(&key()).unwrap();
+        assert_eq!(keys.get(), 0);
+
+        let grid = parent.first_element_child().unwrap();
+        grid.dispatch_event(&key()).unwrap();
+        assert_eq!(keys.get(), 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn keys_follow_focus_after_resize() {
+        let parent = sized_parent("keys_follow_focus_after_resize", 300, 200);
+        let mut terminal =
+            Terminal::new(DomBackend::new_by_id("keys_follow_focus_after_resize").unwrap())
+                .unwrap();
         let (keys, _) = count_events(&mut terminal);
         draw(&mut terminal);
         let document = window().unwrap().document().unwrap();
@@ -746,10 +774,11 @@ mod tests {
 
         // Focus the terminal the way a user would, by clicking or tabbing to it.
         let focusable = document
-            .query_selector("#keys_reach_focused_terminal_after_resize[tabindex], #keys_reach_focused_terminal_after_resize [tabindex]")
+            .query_selector("#keys_follow_focus_after_resize[tabindex], #keys_follow_focus_after_resize [tabindex]")
             .unwrap()
             .unwrap();
-        web_sys::wasm_bindgen::JsCast::dyn_ref::<web_sys::HtmlElement>(&focusable)
+        focusable
+            .dyn_ref::<web_sys::HtmlElement>()
             .unwrap()
             .focus()
             .unwrap();
@@ -761,27 +790,5 @@ mod tests {
         draw(&mut terminal);
         fire_on_focused();
         assert_eq!(keys.get(), 2);
-    }
-
-    #[wasm_bindgen_test]
-    fn input_works_after_resize() {
-        let parent = sized_parent("input_works_after_resize", 300, 200);
-        let mut terminal =
-            Terminal::new(DomBackend::new_by_id("input_works_after_resize").unwrap()).unwrap();
-        let (keys, mice) = count_events(&mut terminal);
-        draw(&mut terminal);
-        fire_input(&parent);
-        assert_eq!((keys.get(), mice.get()), (1, 1));
-
-        set_parent_size(&parent, 200, 100);
-        fire_resize();
-        draw(&mut terminal);
-        fire_input(&parent);
-        assert_eq!((keys.get(), mice.get()), (2, 2));
-
-        fire_resize();
-        draw(&mut terminal);
-        fire_input(&parent);
-        assert_eq!((keys.get(), mice.get()), (3, 3));
     }
 }
